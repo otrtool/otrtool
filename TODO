@@ -1,0 +1,17 @@
+
+== Essential ==
+
+* support for make
+* manpage
+
+== Optional ==
+
+* get rid of the openssl-dependency: find md5-impementation with matching
+  license, or write one. (the latter sounds a lot more interesting)
+* config in ~
+* otrkey-cache for passphrases
+* twittelevision
+* read email + pass from stdin
+* pretty formatting for -i
+* upgrade to weapon of mass destruction (multiple input files)
+

@@ -1,0 +1,34 @@
+otrtool aims to provide an open source tool to deal with otrkey-files from
+onlinetvrecoder.com. At the moment it is able to decrypt them, in the
+future a download manager and/or EPG could be added.
+
+== DEPENDENCIES ==
+
+* libmcrypt (for blowfish)
+* libcurl / curl
+* openssl (for md5, should be quite easy to get rid of this dependency)
+
+== BUILDING ==
+
+Just run the following command from the root of the repository:
+    gcc -g -Wall -lmcrypt -lssl -lcurl -o otrtool src/main.c
+This will create the "otrtool" binary.
+
+== LINKS ==
+
+github repository:      http://github.com/pyropeter/otrtool
+bugtracker:             http://github.com/pyropeter/otrtool/issues
+
+== REPORTING BUGS ==
+
+For bug reports please run otrtool with the "-v"-option. Note that the output
+contains personal data like your email/password, and/or hashes of thiese.
+
+== HISTORY ==
+
+In April, 2010, eddy14 reverse-engineered the otrkey-file-format and OTRs
+Client-Server-protocol. The blog post describing his work (german):
+    http://41yd.de/blog/2010/04/18/otrkey-breaker/
+He also wrote a proove-of-concept tool to decrypt OTRKEY's. I rewrote it in
+proper C and without licensing issues.
+
