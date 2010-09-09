@@ -3,6 +3,9 @@
 
 * support for make
 * manpage
+* choose a license
+* I don't trust my decryptFile(). Check for signed overflows and add
+  proper handling of EOF.
 
 == Optional ==
 
