@@ -1,10 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <getopt.h>
 #include <string.h>
 #include <strings.h>
 #include <unistd.h>
-#include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/syscall.h>
@@ -18,31 +16,13 @@
 #include <curl/types.h>
 #include <curl/easy.h>
 
-/* 
- * gcc -g -Wall -o foo -lmcrypt -lssl -lcurl foo.c
- * 
- * (-g is for debugging symbols)
- * 
- * ##### Could be done
- * * config in ~
- * * otrkey-cache for passphrases
- * * twittelevision
- * * read email + pass from stdin
- * * pretty formatting for -i
- * * upgrade to weapon of mass destruction (multiple input files)
- * 
- */
-
-#define QUOTEME_(x) #x
-#define QUOTEME(x) QUOTEME_(x)
-
 #define ERROR(...) \
   ({fprintf(stderr, __VA_ARGS__); \
     fprintf(stderr, "\n"); \
     exit(EXIT_FAILURE); })
 
 #ifndef VERSION
-  #define VERSION 0.2.2
+  #define VERSION "0.2.2"
 #endif
 
 #define LINE_LENGTH 80
@@ -781,7 +761,7 @@ int main(int argc, char *argv[]) {
   }
   
   if (verbosity >= VERB_DEBUG)
-    printf("OTR-Tool %s\n", QUOTEME(VERSION));
+    printf("OTR-Tool %s\n", VERSION);
   
   if (optind >= argc) {
     fprintf(stderr, "Missing argument: otrkey-file\n");
