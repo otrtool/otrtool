@@ -19,6 +19,11 @@ This will create the "otrtool" binary.
 github repository:      http://github.com/pyropeter/otrtool
 bugtracker:             http://github.com/pyropeter/otrtool/issues
 
+== CONTACT ==
+
+E-Mail:                 com.googlemail@abi1789
+IRC:                    PyroPeter at freenode
+
 == REPORTING BUGS ==
 
 For bug reports please run otrtool with the "-v"-option. Note that the output
