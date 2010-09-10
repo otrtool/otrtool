@@ -718,7 +718,7 @@ void usageError() {
   printf("  -k | Do not fetch keyphrase, use this one\n");
   printf("  -e | Use this eMail address\n");
   printf("  -p | Use this password\n");
-  printf("  -D | Decrypt to this folder (but use default name)\n");
+  //printf("  -D | Decrypt to this folder (but use default name)\n");
   printf("  -O | Decrypt to this file (overwrite default name)\n");
   printf("\n");
 }
@@ -765,8 +765,7 @@ int main(int argc, char *argv[]) {
     }
   }
   
-  if (verbosity >= VERB_DEBUG)
-    printf("OTR-Tool %s\n", VERSION);
+  printf("OTR-Tool, version %s\n", VERSION);
   
   if (optind >= argc) {
     fprintf(stderr, "Missing argument: otrkey-file\n");
