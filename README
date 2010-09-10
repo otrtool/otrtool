@@ -37,3 +37,11 @@ Client-Server-protocol. The blog post describing his work (german):
 He also wrote a proove-of-concept tool to decrypt OTRKEY's. I rewrote it in
 proper C and without licensing issues.
 
+== LICENSE ==
+
+otrtool uses the CC0-license.
+(This seems to place it into Public Domain in at least some countries,
+*disclaimer* but I am far from beeing a lawyer */disclaimer*)
+
+For the license text see the LICENSE file or
+http://creativecommons.org/publicdomain/zero/1.0/legalcode
