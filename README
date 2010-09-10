@@ -10,8 +10,8 @@ future a download manager and/or EPG could be added.
 
 == BUILDING ==
 
-Just run the following command from the root of the repository:
-    gcc -g -Wall -lmcrypt -lssl -lcurl -o otrtool src/main.c
+Just run:
+    make
 This will create the "otrtool" binary.
 
 == LINKS ==
