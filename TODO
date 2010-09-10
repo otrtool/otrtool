@@ -1,7 +1,6 @@
 
 == Essential ==
 
-* support for make
 * manpage
 * I don't trust my decryptFile(). Check for signed overflows and add
   proper handling of EOF.
@@ -17,3 +16,4 @@
 * pretty formatting for -i
 * upgrade to weapon of mass destruction (multiple input files)
 
+* Script to generate version number from git tags
