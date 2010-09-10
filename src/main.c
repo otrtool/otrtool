@@ -28,6 +28,7 @@
 
 #define LINE_LENGTH 80
 #define CHUNK_SIZE  2097152    // 2M, must be multiple of 8
+#define MAX_RESPONSE_LENGTH 1000
 
 #define VERB_INFO  1
 #define VERB_DEBUG 2
@@ -60,13 +61,20 @@ static size_t WriteMemoryCallback(void *ptr, size_t size,
           size_t nmemb, void *data) {
   size_t realsize = size * nmemb;
   struct MemoryStruct *mem = (struct MemoryStruct *)data;
- 
+  
+  // abort very long transfers
+  if (mem->size + realsize > MAX_RESPONSE_LENGTH) {
+    realsize = mem->size <= MAX_RESPONSE_LENGTH
+        ? MAX_RESPONSE_LENGTH - mem->size
+        : 0;
+  }
+  
   mem->memory = realloc(mem->memory, mem->size + realsize + 1);
   if (mem->memory) {
     memcpy(&(mem->memory[mem->size]), ptr, realsize);
     mem->size += realsize;
     mem->memory[mem->size] = 0;
-  }
+  } else return 0;
   return realsize;
 }
 
@@ -256,6 +264,7 @@ void quote(char *message) {
       line[1] = ' ';
       index = 2;
     }
+    message++;
   }
   line[index++] = '\n';
   if (index != 3) fwrite(line, index, 1, stdout);
@@ -470,13 +479,13 @@ char * generateRequest(void *bigkey, char *date) {
   return result;
 }
 
-char * contactServer(char *request) {
+void * contactServer(char *request) {
   // http://curl.haxx.se/libcurl/c/getinmemory.html
   CURL *curl_handle;
   
-  struct MemoryStruct chunk;
-  chunk.memory=NULL; /* we expect realloc(NULL, size) to work */ 
-  chunk.size = 0;    /* no data at this point */ 
+  struct MemoryStruct *chunk = malloc(sizeof(struct MemoryStruct));
+  chunk->memory=NULL; /* we expect realloc(NULL, size) to work */ 
+  chunk->size = 0;    /* no data at this point */ 
   
   curl_global_init(CURL_GLOBAL_ALL);
   
@@ -490,7 +499,7 @@ char * contactServer(char *request) {
   curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
   
   /* we pass our 'chunk' struct to the callback function */ 
-  curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *)&chunk);
+  curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *)chunk);
   
   /* some servers don't like requests that are made without a user-agent
      field, so we provide one */ 
@@ -516,15 +525,7 @@ char * contactServer(char *request) {
   /* we're done with libcurl, so clean it up */ 
   curl_global_cleanup();
   
-  // it seems like that curl-foo allocates one byte more than
-  // chunk.size and puts a \0. as I have to get some sleep,
-  // I will just rely on this. BAAAM!
-  
-  if (verbosity >= VERB_DEBUG) {
-    printf("\nResponse:\n%s\n=====End of Response.\n\n", chunk.memory);
-  }
-  
-  return chunk.memory;
+  return (void *)chunk;
 }
 
 char * decryptResponse(char *response, void *bigkey) {
@@ -573,22 +574,25 @@ void fetchKeyphrase() {
   char *request = generateRequest(bigkey, date);
   
   printf("Trying to contact server...\n");
-  char *response = contactServer(request);
+  struct MemoryStruct *response =
+      (struct MemoryStruct *)contactServer(request);
   printf("Server responded.\n");
   
-  if (strlen(response) != 696) {
-    if (strstr(response, "MessageToBePrintedInDecoder") == response) {
-      printf("Server tells us this sweet message:\n");
-      quote(response + 27);
+  response->memory[response->size] = 0;
+  
+  if (response->size != 696) {
+    if (memcmp(response->memory,"MessageToBePrintedInDecoder",27) ==0) {
+      printf("Server sent us this sweet message:\n");
+      quote(response->memory + 27);
     } else {
-      printf("Server sends us this ugly crap:\n");
-      dumpHex(response, strlen(response));
+      printf("Server sent us this ugly crap:\n");
+      dumpHex(response->memory, response->size);
     }
-    ERROR("Server does not like us :-(");
+    ERROR("Server response is unuseable, exiting");
   }
   
   int info_len;
-  char *info_crypted = base64Decode(response, &info_len);
+  char *info_crypted = base64Decode(response->memory, &info_len);
   // check if len == 0x208
   if (info_len != 0x208)
     ERROR("Programmer was getting tired and added a bug");
