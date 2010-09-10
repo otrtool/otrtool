@@ -16,5 +16,3 @@
 * pretty formatting for -i
 * upgrade to weapon of mass destruction (multiple input files)
   * Implemention of "-D"-option
-
-* Script to generate version number from git tags

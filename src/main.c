@@ -23,7 +23,7 @@
     exit(EXIT_FAILURE); })
 
 #ifndef VERSION
-  #define VERSION "0.2.2"
+  #define VERSION "version unknown"
 #endif
 
 #define LINE_LENGTH 80
@@ -765,7 +765,7 @@ int main(int argc, char *argv[]) {
     }
   }
   
-  printf("OTR-Tool, version %s\n", VERSION);
+  printf("OTR-Tool, %s\n", VERSION);
   
   if (optind >= argc) {
     fprintf(stderr, "Missing argument: otrkey-file\n");

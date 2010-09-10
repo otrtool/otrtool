@@ -6,8 +6,11 @@
 # 'make clean'  removes all .o and executable files
 #
 
+DVERSION = v0.3
+VERSION := $(shell git describe --long 2>/dev/null || echo "$(DVERSION)")
+
 CC = gcc
-CFLAGS = -Wall -g
+CFLAGS = -Wall -g -DVERSION='"$(VERSION)"'
 LIBS = -lmcrypt -lssl -lcurl
 
 SRCS = src/main.c
