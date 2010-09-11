@@ -18,13 +18,18 @@ MAIN = otrtool
 
 OBJS = $(SRCS:.c=.o)
 
-.PHONY: depend clean
+.PHONY: depend clean doc
 
-all:    $(MAIN)
-	@echo Build successful
+all:    $(MAIN) doc
+	@echo Done.
+
+doc:
+	gzip -c doc/otrtool.1 > otrtool.1.gz
+	@echo Manpage was gzipped successfully
 
 $(MAIN): $(OBJS)
 	$(CC) $(CFLAGS) -o $(MAIN) $(OBJS) $(LIBS)
+	@echo Build successful
 
 # this is a suffix replacement rule for building .o's from .c's
 # it uses automatic variables $<: the name of the prerequisite of
@@ -34,7 +39,7 @@ $(MAIN): $(OBJS)
 	$(CC) $(CFLAGS) -c $<  -o $@
 
 clean:
-	$(RM) $(OBJS) $(MAIN)
+	$(RM) $(OBJS) $(MAIN) $(MAIN).1.gz
 
 depend: $(SRCS)
 	makedepend $^

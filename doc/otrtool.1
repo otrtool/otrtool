@@ -1,0 +1,132 @@
+.TH OTRTOOL 1 2010-09-11 ZOMG "otrtool Manual"
+
+.\" ********************************************************************
+.\" ********************************************************************
+.SH NAME
+otrtool \- decrypts otrkeys from onlinetvrecorder.com
+
+.SH SYNOPSIS
+
+.B otrtool
+.RB \-i
+.IR otrkey-file
+
+.br
+.B otrtool
+.RB \-f
+.RB [\| \-e
+.IR email \|]
+.RB [\| \-p
+.IR password \|]
+.IR otrkey-file
+
+.br
+.B otrtool
+.RB \-x
+.RB [\| \-e
+.IR email \|]
+.RB [\| \-p
+.IR password \|]
+.RB [\| \-k
+.IR keyphrase \|]
+.RS 11
+.br
+.RB [\| \-O
+.IR output-file \|]
+.IR otrkey-file
+.RE
+
+.br
+.B otrtool
+.RB [\| \-h \|]
+.RB [\| \-v \|]
+
+.\" ********************************************************************
+.\" ********************************************************************
+.SH DESCRYPTION
+.B otrtool
+aims to provide an open source tool to deal with otrkey\-files from onlinetvrecoder.com. At the moment it is able to decrypt them, in the future a download manager and/or EPG could be added.
+
+
+.\" ********************************************************************
+.\" ********************************************************************
+.SH OPTIONS
+
+.\" ********************************************************************
+.SS "Modes of operation"
+
+.TP
+.B \-i
+Display information about
+.I otrkey-file
+
+.TP
+.B \-f
+Fetch keyphrase for
+.I otrkey-file
+
+.TP
+.B \-x
+Fetch keyphrase for
+.I otrkey-file
+and decrypt it
+
+
+.\" ********************************************************************
+.SS "General options"
+
+.TP
+.B \-h
+Display help
+
+.TP
+.B \-v
+Be verbose
+
+
+.\" ********************************************************************
+.SS "Decrypt options"
+
+.TP
+.BI \-k \ keyphrase
+Do not fetch keyphrase, instead use
+.I keyphrase
+
+.TP
+.BI \-O \ output-file
+Save decrypted file to
+.I output-file
+
+
+.\" ********************************************************************
+.SS "Fetch options"
+
+.TP
+.BI \-e \ email
+Authenticate using
+.I email
+as e-mail address
+
+.TP
+.BI \-p \ password
+Authenticate using
+.I password
+as password
+
+
+.\" ********************************************************************
+.\" ********************************************************************
+.SH "CONTACT"
+
+.TP
+.B Web:
+http://github.com/pyropeter/otrtool
+
+.TP
+.B IRC:
+PyroPeter at freenode
+
+.RE
+
+Bug reports, feature requests and patches are always welcome.
+
