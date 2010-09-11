@@ -1,7 +1,6 @@
 
 == Essential ==
 
-* manpage
 * I don't trust my decryptFile(). Check for signed overflows and add
   proper handling of EOF.
 

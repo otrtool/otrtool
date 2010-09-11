@@ -6,7 +6,7 @@
 # 'make clean'  removes all .o and executable files
 #
 
-DVERSION = v0.3
+DVERSION = v0.4
 VERSION := $(shell git describe --long 2>/dev/null || echo "$(DVERSION)")
 
 CC = gcc
