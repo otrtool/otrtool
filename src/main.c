@@ -565,10 +565,18 @@ void fetchKeyphrase() {
   char *date = malloc(9);
   strftime(date, 9, "%Y%m%d", gmtime(&time_));
   
-  if (email == NULL)
-    ERROR("Email unknown");
-  if (password == NULL)
-    ERROR("Password unknown");
+  if (email == NULL) {
+    email = malloc(51);
+    printf("Enter your eMail-address: ");
+    if (scanf("%50s", email) < -1)
+      ERROR("Email invalid");
+  }
+  if (password == NULL) {
+    password = malloc(51);
+    printf("Enter your      password: ");
+    if (scanf("%50s", password) < 1)
+      ERROR("Password invalid");
+  }
   
   char *bigkey = generateBigkey(date);
   char *request = generateRequest(bigkey, date);

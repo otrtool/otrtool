@@ -11,7 +11,6 @@
 * config in ~
 * otrkey-cache for passphrases
 * twittelevision
-* read email + pass from stdin
 * pretty formatting for -i
 * upgrade to weapon of mass destruction (multiple input files)
   * Implemention of "-D"-option
