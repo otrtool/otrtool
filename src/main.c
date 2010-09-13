@@ -724,8 +724,9 @@ void usageError() {
 }
 
 int main(int argc, char *argv[]) {
-  int opt;
+  printf("OTR-Tool, %s\n", VERSION);
   
+  int opt;
   while ( (opt = getopt(argc, argv, "hvifxk:e:p:D:O:")) != -1) {
     switch (opt) {
       case 'h':
@@ -764,8 +765,6 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
   }
-  
-  printf("OTR-Tool, %s\n", VERSION);
   
   if (optind >= argc) {
     fprintf(stderr, "Missing argument: otrkey-file\n");
