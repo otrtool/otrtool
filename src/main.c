@@ -716,7 +716,7 @@ void usageError() {
   printf("               [-D <destfolder>] [-O <destfile>] <otrkey-file>\n");
   printf("\n");
   printf("MODES OF OPERATION\n");
-  printf("  -i | Display information about file\n");
+  printf("  -i | Display information about file (default action)\n");
   printf("  -f | Fetch keyphrase for file\n");
   printf("  -x | Decrypt file\n");
   printf("\n");
