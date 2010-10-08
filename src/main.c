@@ -30,6 +30,8 @@
 #define CHUNK_SIZE  2097152    // 2M, must be multiple of 8
 #define MAX_RESPONSE_LENGTH 1000
 
+static int guimode = 0;
+
 #define VERB_INFO  1
 #define VERB_DEBUG 2
 static int verbosity = VERB_INFO;
@@ -689,15 +691,23 @@ void decryptFile() {
       ERROR("Error writing to destination file");
     
     position += writesize;
-    memset(progressbar, ' ', 40);
-    memset(progressbar, '=', (position*40)/length);
-    progressbar[40] = 0;
-    printf("[%s] %3lli%% %c\r", progressbar, (position*100)/length,
-      rotatingFoo[blocknum % 4]);
+    if (guimode == 0) {
+      memset(progressbar, ' ', 40);
+      memset(progressbar, '=', (position*40)/length);
+      progressbar[40] = 0;
+      printf("[%s] %3lli%% %c\r", progressbar, (position*100)/length,
+        rotatingFoo[blocknum % 4]);
+    } else {
+      printf("gui> %3lli\n", (position*100)/length);
+    }
     fflush(stdout);
   }
   
-  printf("[========================================] 100%%    \n");
+  if (guimode == 0) {
+    printf("[========================================] 100%%    \n");
+  } else {
+    printf("gui> Finished\n");
+  }
   
   mcrypt_generic_deinit(blowfish);
   mcrypt_module_close(blowfish);
@@ -723,6 +733,7 @@ void usageError() {
   printf("OTHER ARGUMENTS\n");
   printf("  -h | Display help\n");
   printf("  -v | Be verbose\n");
+  printf("  -g | Output status in machine-readable way ('GUI-mode')\n");
   printf("  -k | Do not fetch keyphrase, use this one\n");
   printf("  -e | Use this eMail address\n");
   printf("  -p | Use this password\n");
@@ -735,7 +746,7 @@ int main(int argc, char *argv[]) {
   printf("OTR-Tool, %s\n", VERSION);
   
   int opt;
-  while ( (opt = getopt(argc, argv, "hvifxk:e:p:D:O:")) != -1) {
+  while ( (opt = getopt(argc, argv, "hvgifxk:e:p:D:O:")) != -1) {
     switch (opt) {
       case 'h':
         usageError();
@@ -743,6 +754,9 @@ int main(int argc, char *argv[]) {
         break;
       case 'v':
         verbosity = VERB_DEBUG;
+        break;
+      case 'g':
+        guimode = 1;
         break;
       case 'i':
         action = ACTION_INFO;
