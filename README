@@ -4,15 +4,22 @@ future a download manager and/or EPG could be added.
 
 == DEPENDENCIES ==
 
-* libmcrypt (for blowfish)
-* libcurl / curl
-* openssl (for md5, should be quite easy to get rid of this dependency)
+* libmcrypt             for blowfish
+* libcurl / curl        for the server request
+* openssl               for md5
 
 == BUILDING ==
 
-Just run:
-    make
-This will create the "otrtool" binary.
+1. make depend
+    Needs X.Org's imake; You may skip this if you are sure you installed
+    all the dependencies.
+
+2. make
+
+3. Copy the following files to the places they belong:
+    ./otrtool           the main binary
+    ./otrtool.1.gz      the gzip'ed manpage
+    ./LICENSE           the (rights waiver) license
 
 == LINKS ==
 
