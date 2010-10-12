@@ -645,12 +645,17 @@ void openFile() {
 
 void decryptFile() {
   int fd;
+  char *headerFN;
   
-  if (destfolder != NULL)
-    ERROR("Option -D is not implemented, yet");
+  if (destfolder != NULL) {
+    headerFN = queryGetParam(header, "FN");
+    destfilename = malloc(strlen(destfolder) + strlen(headerFN) + 2);
+    strcpy(destfilename, destfolder);
+    destfilename[strlen(destfolder)] = '/';
+    strcpy(destfilename + strlen(destfolder) + 1, headerFN);
+  }
   
   if (destfilename == NULL) {
-    // this leaks memory. 10 valuable bytes
     destfilename = queryGetParam(header, "FN");
   }
   
@@ -737,8 +742,8 @@ void usageError() {
   printf("  -k | Do not fetch keyphrase, use this one\n");
   printf("  -e | Use this eMail address\n");
   printf("  -p | Use this password\n");
-  //printf("  -D | Decrypt to this folder (but use default name)\n");
-  printf("  -O | Decrypt to this file (overwrite default name)\n");
+  printf("  -D | Output folder\n");
+  printf("  -O | Output file (overrides -D)\n");
   printf("\n");
 }
 
@@ -780,7 +785,8 @@ int main(int argc, char *argv[]) {
         destfolder = optarg;
         break;
       case 'O':
-        destfilename = optarg;
+        destfilename = malloc(strlen(optarg) + 1);
+        strcpy(destfilename, optarg);
         break;
       default:
         usageError();
@@ -828,6 +834,7 @@ int main(int argc, char *argv[]) {
   }
   
   free(header);
+  free(destfilename);
   
   if (fclose(file) != 0)
     ERROR("Error closing file. I don't care, I was going to exit anyway");

@@ -31,6 +31,8 @@ otrtool \- decrypts otrkeys from onlinetvrecorder.com
 .IR keyphrase \|]
 .RS 11
 .br
+.RB [\| \-D
+.IR output-folder \|]
 .RB [\| \-O
 .IR output-file \|]
 .IR otrkey-file
@@ -93,9 +95,17 @@ Do not fetch keyphrase, instead use
 .I keyphrase
 
 .TP
+.BI \-D \ output-folder
+Save decrypted file to
+.I output-folder/otr-style-filename.mpg.whatever
+
+.TP
 .BI \-O \ output-file
 Save decrypted file to
 .I output-file
+.br
+This overrides
+.B -D
 
 
 .\" ********************************************************************
