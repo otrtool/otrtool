@@ -37,6 +37,7 @@
 
 #ifndef HAVE_OPENSSL
 
+#include <stdlib.h>
 #include <string.h>
 
 #include "md5.h"
@@ -292,19 +293,22 @@ void MD5_Final(unsigned char *result, MD5_CTX *ctx)
 	memset(ctx, 0, sizeof(*ctx));
 }
 
-unsigned char *MD5(const unsigned char *d, unsigned long n,
-unsigned char *md) {
+unsigned char staticmd[16];
+
+unsigned char * MD5(const unsigned char *d, unsigned long n,
+										unsigned char *md) {
 	/* This function was added by PyroPeter to allow reusal of old
 	 * openssl-dependent code */
 	
-	MD5_CTX *ctx;
-	unsigned char *result = malloc(16);
+	MD5_CTX ctx;
+	memset(&ctx, 0, sizeof(MD5_CTX));
+	MD5_Init(&ctx);
 	
-	MD5_Init(ctx);
-	MD5_Update(ctx, d, n);
-	MD5_Final(result, ctx);
+	MD5_Update(&ctx, (void *) d, n);
 	
-	return result;
+	unsigned char *result = (md ? md : (unsigned char *) staticmd);
+	MD5_Final(result, &ctx);
+	return staticmd;
 }
 
 #endif
