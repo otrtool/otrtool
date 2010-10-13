@@ -7,8 +7,8 @@ otrtool
 =======
 otrtool aims to provide an open source tool to deal with otrkey-files from [OnlineTvRecorder.com](http://onlinetvrecoder.com/). At the moment it is able to decrypt them, in the future a download manager and/or EPG could be added.
 
-Termshot
---------
+Produces nice output!
+---------------------
 
     $ ./otrtool -x Foo-Bar.otrkey
     OTR-Tool, v0.5-0-g1c8a465
