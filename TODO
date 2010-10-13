@@ -10,8 +10,6 @@
   packages could then just link /bin/otrdecoder -> /bin/otrtool
   * Would this be option-compatible to the proprietary otrdecoder?
 
-* get rid of the openssl-dependency: find md5-impementation with matching
-  license, or write one. (the latter sounds a lot more interesting)
 * config in ~
 * otrkey-cache for passphrases
 * twittelevision

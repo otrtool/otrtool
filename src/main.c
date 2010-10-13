@@ -11,7 +11,7 @@
 #include <time.h>
 
 #include <mcrypt.h>
-#include <openssl/md5.h>
+#include "md5.h"
 
 #include <curl/curl.h>
 #include <curl/types.h>

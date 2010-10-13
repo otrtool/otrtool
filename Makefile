@@ -13,7 +13,7 @@ VERSION := $(shell git describe --long --dirty 2>/dev/null || echo "$(DVERSION)"
 
 CC = gcc
 CFLAGS = -Wall -g -DVERSION='"$(VERSION)"'
-LIBS = -lmcrypt -lssl -lcurl
+LIBS = -lmcrypt -lcurl
 
 SRCS = src/main.c
 MAIN = otrtool
