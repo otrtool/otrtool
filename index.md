@@ -10,10 +10,10 @@ otrtool aims to provide an open source tool to deal with otrkey-files from [Onli
 Termshot
 --------
 
-    $ *./otrtool -x Foo-Bar.otrkey*
+    $ ./otrtool -x Foo-Bar.otrkey
     OTR-Tool, v0.5-0-g1c8a465
-    Enter your eMail-address: *foo@bar.tld*
-    Enter your      password: *god*
+    Enter your eMail-address: foo@bar.tld
+    Enter your      password: god
     Trying to contact server...
     Server responded.
     Keyphrase: ACBD18DB4CC2F201037B51D194A71054FCCC4A4D8136F6524F2D51F2
