@@ -7,6 +7,19 @@ otrtool
 =======
 otrtool aims to provide an open source tool to deal with otrkey-files from [OnlineTvRecorder.com](http://onlinetvrecoder.com/). At the moment it is able to decrypt them, in the future a download manager and/or EPG could be added.
 
+Termshot
+--------
+
+    $ *./otrtool -x Foo-Bar.otrkey*
+    OTR-Tool, v0.5-0-g1c8a465
+    Enter your eMail-address: *foo@bar.tld*
+    Enter your      password: *god*
+    Trying to contact server...
+    Server responded.
+    Keyphrase: ACBD18DB4CC2F201037B51D194A71054FCCC4A4D8136F6524F2D51F2
+    Decrypting...
+    [========================================] 100%
+
 How to install using packages
 -----------------------------
 
@@ -69,7 +82,4 @@ In April, 2010, eddy14 reverse-engineered the otrkey-file-format and OTRs Client
 License
 -------
 
-otrtool uses the CC0-license.
-(This seems to place it into Public Domain in at least some countries, _disclaimer_ but I am far from being a lawyer _/disclaimer_)
-
-For the license text see the LICENSE file or [CC0 at creativecommons.org](http://creativecommons.org/publicdomain/zero/1.0/legalcode)
+You are free to do **anything** with otrtool. For details, see the `LICENSE` file.
