@@ -5,26 +5,22 @@ layout: wikistyle
 
 otrtool
 =======
-otrtool aims to provide an open source tool to deal with otrkey-files from [OnlineTvRecorder.com](http://onlinetvrecoder.com). At the moment it is able to decrypt them, in the future a download manager and/or EPG could be added.
+otrtool aims to provide an open source tool to deal with otrkey-files from [OnlineTvRecorder.com](http://onlinetvrecoder.com/). At the moment it is able to decrypt them, in the future a download manager and/or EPG could be added.
 
 Packages
 --------
 
 ### Arch Linux
-<ul>
-<li>[AUR/otrtool](http://aur.archlinux.org/packages.php?ID=41577)</li>
-<li>[AUR/otrtool-git](http://aur.archlinux.org/packages.php?ID=40775)</li>
-</ul>
+* [AUR/otrtool](http://aur.archlinux.org/packages.php?ID=41577)
+* [AUR/otrtool-git](http://aur.archlinux.org/packages.php?ID=40775)
 
 *This projects needs package maintainers (=> you?)*
 
 Dependencies
 ------------
 
-<ul>
-<li>libmcrypt</li>
-<li>libcurl / curl</li>
-</ul>
+* libmcrypt
+* libcurl / curl
 
 Building
 --------
@@ -33,25 +29,19 @@ Building
 
 After that, copy the following files to the places they belong:
 
-<ul>
-<li>`./otrtool` (the main binary)</li>
-<li>`./otrtool.1.gz` (the gzip'ed manpage)</li>
-<li>`./LICENSE` (the (rights waiver) license)</li>
-</ul>
+* `./otrtool` (the main binary)
+* `./otrtool.1.gz` (the gzip'ed manpage)
+* `./LICENSE` (the (rights waiver) license)
 
 Links
 -----
 
-<ul>
-<li>[github repository](http://github.com/pyropeter/otrtool)</li>
-<li>[bugtracker](http://github.com/pyropeter/otrtool/issues)</li>
-<ul>
+* [github repository](http://github.com/pyropeter/otrtool)
+* [bugtracker](http://github.com/pyropeter/otrtool/issues)
 
 ### Related projects:
 
-<ul>
-<li>[lem's tk/perl GUI](http://github.com/Lem/otrtool-gui)</li>
-<ul>
+* [lem's tk/perl GUI](http://github.com/Lem/otrtool-gui)
 
 Contact
 -------
@@ -67,9 +57,7 @@ For bug reports please run otrtool with the "-v"-option. Note that the output co
 History
 -------
 
-In April, 2010, eddy14 reverse-engineered the otrkey-file-format and OTRs Client-Server-protocol. The blog post describing his work (german):
-    http://41yd.de/blog/2010/04/18/otrkey-breaker/
-He also wrote a proove-of-concept tool to decrypt OTRKEY's. I rewrote it in proper C and without licensing issues.
+In April, 2010, eddy14 reverse-engineered the otrkey-file-format and OTRs Client-Server-protocol. [He described his work in a german blog post.](http://41yd.de/blog/2010/04/18/otrkey-breaker/) He also wrote a proove-of-concept tool to decrypt OTRKEY's. I rewrote it in proper C and without licensing issues.
 
 License
 -------
