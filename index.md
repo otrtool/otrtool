@@ -36,6 +36,7 @@ How to install from source
 
 * v0.8 (stable) [tarball](http://github.com/pyropeter/otrtool/tarball/v0.8)
 * current snapshot (unstable) [tarball](http://github.com/pyropeter/otrtool/tarball/master)
+* `git clone git://github.com/pyropeter/otrtool.git`
 
 ### Install dependencies
 
