@@ -15,7 +15,7 @@ CC = gcc
 CFLAGS = -Wall -g -DVERSION='"$(VERSION)"'
 LIBS = -lmcrypt -lcurl
 
-SRCS = src/main.c
+SRCS = src/md5.c src/main.c
 MAIN = otrtool
 
 OBJS = $(SRCS:.c=.o)
