@@ -43,21 +43,21 @@ IRC:                    PyroPeter at freenode
 == REPORTING BUGS ==
 
 For bug reports please run otrtool with the "-v"-option. Note that the output
-contains personal data like your email/password, and/or hashes of thiese.
+contains personal data like your email/password, and/or hashes of them.
 
 == HISTORY ==
 
 In April, 2010, eddy14 reverse-engineered the otrkey-file-format and OTRs
 Client-Server-protocol. The blog post describing his work (german):
     http://41yd.de/blog/2010/04/18/otrkey-breaker/
-He also wrote a proove-of-concept tool to decrypt OTRKEY's. I rewrote it in
+He also wrote a proof-of-concept tool to decrypt OTRKEYs. I rewrote it in
 proper C and without licensing issues.
 
 == LICENSE ==
 
 otrtool uses the CC0-license.
 (This seems to place it into Public Domain in at least some countries,
-*disclaimer* but I am far from beeing a lawyer */disclaimer*)
+*disclaimer* but I am far from being a lawyer */disclaimer*)
 
 For the license text see the LICENSE file or
 http://creativecommons.org/publicdomain/zero/1.0/legalcode
