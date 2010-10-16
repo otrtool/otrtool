@@ -735,16 +735,12 @@ void usageError() {
   printf("  -f | Fetch keyphrase for file\n");
   printf("  -x | Decrypt file\n");
   printf("\n");
-  printf("OTHER ARGUMENTS\n");
-  printf("  -h | Display help\n");
-  printf("  -v | Be verbose\n");
-  printf("  -g | Output status in machine-readable way ('GUI-mode')\n");
+  printf("FREQUENTLY USED ARGUMENTS\n");
   printf("  -k | Do not fetch keyphrase, use this one\n");
-  printf("  -e | Use this eMail address\n");
-  printf("  -p | Use this password\n");
   printf("  -D | Output folder\n");
   printf("  -O | Output file (overrides -D)\n");
   printf("\n");
+  printf("See otrtool(1) for further information\n");
 }
 
 int main(int argc, char *argv[]) {
