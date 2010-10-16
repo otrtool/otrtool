@@ -15,5 +15,7 @@
 * twittelevision
 * pretty formatting for -i
 * upgrade to weapon of mass destruction (multiple input files)
+  * there are various little memory leaks in fetchKeypharse()
 * check integrity of decrypted file
   * where is the hash saved/in what format? (header is more likely, imo)
+* Offer to overwrite destination file in decryptFile()
