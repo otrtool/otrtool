@@ -681,7 +681,7 @@ void decryptFile() {
   MCRYPT blowfish = mcrypt_module_open("blowfish", NULL, "ecb", NULL);
   mcrypt_generic_init(blowfish, key, 28, NULL);
   
-  unsigned long long length = atol(queryGetParam(header, "SZ")) - 512;
+  unsigned long long length = atol(queryGetParam(header, "SZ")) - 522;
   unsigned long long position = 0;
   int blocknum;
   int readsize;
