@@ -438,8 +438,8 @@ char * generateRequest(void *bigkey, char *date) {
   snprintf(code, 513, "FOOOOBAR\
 &OS=01677e4c0ae5468b9b8b823487f14524\
 &M=01677e4c0ae5468b9b8b823487f14524\
-&LN=EN\
-&VN=0.4.1132\
+&LN=DE\
+&VN=1.4.1132\
 &IR=TRUE\
 &IK=aFzW1tL7nP9vXd8yUfB5kLoSyATQ\
 &FN=%s\
