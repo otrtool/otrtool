@@ -478,6 +478,7 @@ char * generateRequest(void *bigkey, char *date) {
   
   free(code);
   free(dump);
+  free(iv);
   return result;
 }
 
@@ -567,6 +568,11 @@ void fetchKeyphrase() {
   char *date = malloc(9);
   strftime(date, 9, "%Y%m%d", gmtime(&time_));
   
+  if (info) {
+    free(info);
+    info = NULL;
+  }
+  
   if (email == NULL) {
     email = malloc(51);
     printf("Enter your eMail-address: ");
@@ -618,6 +624,7 @@ void fetchKeyphrase() {
   
   printf("Keyphrase: %s\n", keyphrase);
   
+  free(date);
   free(bigkey);
   free(request);
   free(response);
