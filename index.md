@@ -27,14 +27,18 @@ How to install using packages
 * [AUR/otrtool](http://aur.archlinux.org/packages.php?ID=41577)
 * [AUR/otrtool-git](http://aur.archlinux.org/packages.php?ID=40775)
 
+### Gentoo
+* [lem](http://github.com/lem/) wrote [an ebuild](http://bugs.gentoo.org/attachment.cgi?id=250615), but [the submit process is taking a long time](http://bugs.gentoo.org/show_bug.cgi?id=341059).
+
 **This projects needs package maintainers (=> you?)**
+Especially a deb-packet was requested twice.
 
 How to install from source
 --------------------------
 
 ### Get source
 
-* v0.8 (stable) [tarball](http://github.com/pyropeter/otrtool/tarball/v0.8)
+* v0.9 (stable) [tarball](http://github.com/pyropeter/otrtool/tarball/v0.9)
 * current snapshot (unstable) [tarball](http://github.com/pyropeter/otrtool/tarball/master)
 * `git clone git://github.com/pyropeter/otrtool.git`
 
