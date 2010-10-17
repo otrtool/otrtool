@@ -146,7 +146,7 @@ void * hex2bin(char *data_) {
 
 char * base64Encode(void *data_, int len) {
   unsigned char *data = data_;
-  static const char b64[] = "\
+  static const char *b64 = "\
 ABCDEFGHIJKLMNOPQRSTUVWXYZ\
 abcdefghijklmnopqrstuvwxyz\
 0123456789+/";
@@ -225,6 +225,14 @@ void * base64Decode(char *text, int *outlen) {
   }
   
   return (void*)result;
+}
+
+int isBase64(char *text) {
+  static const char *b64 = "\
+ABCDEFGHIJKLMNOPQRSTUVWXYZ\
+abcdefghijklmnopqrstuvwxyz\
+0123456789+/=";
+  return strlen(text) == strspn(text, b64);
 }
 
 char * queryGetParam(char *query, char *name) {
@@ -531,21 +539,23 @@ void * contactServer(char *request) {
   return (void *)chunk;
 }
 
-char * decryptResponse(char *response, void *bigkey) {
+char * decryptResponse(char *response, int length, void *bigkey) {
   MCRYPT blowfish = mcrypt_module_open("blowfish", NULL, "ecb", NULL);
   
-  char *result = malloc(512);
-  memcpy(result, response+8, 512);
+  length -= 8;
+  
+  char *result = malloc(length);
+  memcpy(result, response+8, length);
   
   mcrypt_generic_init(blowfish, bigkey, 28, NULL);
-  reverseWords(result, 512);
-  mdecrypt_generic(blowfish, result, 512);
-  reverseWords(result, 512);
+  reverseWords(result, length);
+  mdecrypt_generic(blowfish, result, length);
+  reverseWords(result, length);
   mcrypt_generic_deinit(blowfish);
   mcrypt_module_close(blowfish);
   
   int i;
-  for (i = 0 ; i < 512 ; i++) {
+  for (i = 0 ; i < length ; i++) {
     result[i] ^= response[i];
   }
   
@@ -596,7 +606,7 @@ void fetchKeyphrase() {
   
   response->memory[response->size] = 0;
   
-  if (response->size != 696) {
+  if (isBase64(response->memory) == 0) {
     if (memcmp(response->memory,"MessageToBePrintedInDecoder",27) ==0) {
       printf("Server sent us this sweet message:\n");
       quote(response->memory + 27);
@@ -609,11 +619,14 @@ void fetchKeyphrase() {
   
   int info_len;
   char *info_crypted = base64Decode(response->memory, &info_len);
-  // check if len == 0x208
-  if (info_len != 0x208)
-    ERROR("Programmer was getting tired and added a bug");
   
-  info = decryptResponse(info_crypted, bigkey);
+  if (info_len % 8 != 0) {
+    printf("Length of response must be a multiple of 8.");
+    dumpHex(info_crypted, info_len);
+    ERROR("Server response is unuseable, exiting");
+  }
+  
+  info = decryptResponse(info_crypted, info_len, bigkey);
   
   keyphrase = queryGetParam(info, "HP");
   if (keyphrase == NULL)
