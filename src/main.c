@@ -675,21 +675,22 @@ void decryptFile() {
   if (fd < 0)
     ERROR("Error opening destination file: %s", destfilename);
   
-  // decrypt
+  printf("Decrypting...\n"); // ----------------------------------------
+  
   void *key = hex2bin(keyphrase);
   MCRYPT blowfish = mcrypt_module_open("blowfish", NULL, "ecb", NULL);
   mcrypt_generic_init(blowfish, key, 28, NULL);
   
-  printf("Decrypting...\n");
-  
   unsigned long long length = atol(queryGetParam(header, "SZ")) - 512;
   unsigned long long position = 0;
   int blocknum;
-  char *progressbar = malloc(41);
-  char rotatingFoo[4] = {'|', '/', '-', '\\'};
   int readsize;
   int writesize;
   char *buffer = malloc(CHUNK_SIZE);
+  
+  char *progressbar = malloc(41);
+  const char *rotatingFoo = "|/-\\";
+  
   for (blocknum = 0 ; 1 ; blocknum++) {
     readsize = fread(buffer, 1, CHUNK_SIZE, file);
     if (readsize <= 0) break;
