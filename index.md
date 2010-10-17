@@ -28,7 +28,7 @@ How to install using packages
 * [AUR/otrtool-git](http://aur.archlinux.org/packages.php?ID=40775)
 
 ### Gentoo
-* [lem](http://github.com/lem/) wrote [an ebuild](http://bugs.gentoo.org/attachment.cgi?id=250615), but [the submit process is taking a long time](http://bugs.gentoo.org/show_bug.cgi?id=341059).
+* [lem](http://github.com/lem/) wrote [an ebuild](http://bugs.gentoo.org/attachment.cgi?id=251059), but [the submit process is taking a long time](http://bugs.gentoo.org/show_bug.cgi?id=341059).
 
 **This projects needs package maintainers (=> you?)**
 Especially a deb-packet was requested twice.
