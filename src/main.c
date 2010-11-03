@@ -22,6 +22,12 @@
     fprintf(stderr, "\n"); \
     exit(EXIT_FAILURE); })
 
+#define PERROR(...) \
+  ({fprintf(stderr, __VA_ARGS__); \
+    fprintf(stderr, "\nReason: "); \
+    perror(NULL); \
+    exit(EXIT_FAILURE); })
+
 #ifndef VERSION
   #define VERSION "version unknown"
 #endif
@@ -356,7 +362,7 @@ void dumpHex(void *data_, int len) {
 char * getHeader() {
   unsigned char *header = malloc(sizeof(char) * 513);
   if (fread(header, 512, 1, file) < 1)
-    ERROR("Error reading file");
+    PERROR("Error reading file");
   MCRYPT blowfish;
   blowfish = mcrypt_module_open("blowfish", NULL, "ecb", NULL);
   unsigned char hardKey[] = {
@@ -651,12 +657,12 @@ void openFile() {
     file = fopen(filename, "rb");
   
   if (file == NULL)
-    ERROR("Error opening file");
+    PERROR("Error opening file");
   
   char magic[11];
   magic[10] = 0;
   if (fread(magic, 10, 1, file) < 1)
-    ERROR("Error reading file");
+    PERROR("Error reading file");
   if (strcmp(magic, "OTRKEYFILE") != 0)
     ERROR("Wrong file format");
   
@@ -686,7 +692,7 @@ void decryptFile() {
     ERROR("Destination file exists: %s", destfilename);
   }
   if (fd < 0)
-    ERROR("Error opening destination file: %s", destfilename);
+    PERROR("Error opening destination file: %s", destfilename);
   
   printf("Decrypting...\n"); // ----------------------------------------
   
@@ -714,7 +720,7 @@ void decryptFile() {
     
     writesize = write(fd, buffer, readsize);
     if (writesize != readsize)
-      ERROR("Error writing to destination file");
+      PERROR("Error writing to destination file");
     
     position += writesize;
     if (guimode == 0) {
@@ -739,7 +745,7 @@ void decryptFile() {
   mcrypt_module_close(blowfish);
   
   if (close(fd) < 0)
-    ERROR("Error closing destination file.");
+    PERROR("Error closing destination file.");
   
   free(progressbar);
   free(key);
@@ -854,7 +860,7 @@ int main(int argc, char *argv[]) {
   free(destfilename);
   
   if (fclose(file) != 0)
-    ERROR("Error closing file. I don't care, I was going to exit anyway");
+    PERROR("Error closing file. I don't care, I was going to exit anyway");
   
   exit(EXIT_SUCCESS);
 }
