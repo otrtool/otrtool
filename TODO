@@ -1,21 +1,23 @@
 
-== Essential ==
+== Until 1.0 ==
 
-* I don't trust my decryptFile(). Check for signed overflows and add
-  proper handling of EOF.
+* Offer to overwrite destination file in decryptFile()
+* upgrade to weapon of mass destruction (multiple input files)
+  * there are various little memory leaks in fetchKeypharse()
+* more error-proof EOF handling in decryptFile()
+  * piping in otrkeys using "tail -f" should be possible
+* guimode: disable interactivity
+  * fetchKeyphrase(): email and password
+  * decryptFile(): destination file overwriting (once implemented)
 
 == Optional ==
 
 * argv[0] could be checked for .../otrdecoder to add -x automatically
   packages could then just link /bin/otrdecoder -> /bin/otrtool
   * Would this be option-compatible to the proprietary otrdecoder?
-
 * config in ~
 * otrkey-cache for passphrases
 * twittelevision
 * pretty formatting for -i
-* upgrade to weapon of mass destruction (multiple input files)
-  * there are various little memory leaks in fetchKeypharse()
 * check integrity of decrypted file
   * where is the hash saved/in what format? (header is more likely, imo)
-* Offer to overwrite destination file in decryptFile()
