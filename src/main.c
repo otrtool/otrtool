@@ -91,6 +91,7 @@ static size_t WriteMemoryCallback(void *ptr, size_t size,
 // ######################## generic functions ####################
 
 void reverseWords(void *in_, int size) {
+  // swaps byte order of 4 byte chunks
   unsigned char *in = in_;
   unsigned char *out = malloc(size);
   int i;
@@ -704,17 +705,25 @@ void decryptFile() {
   
   unsigned long long length = atol(queryGetParam(header, "SZ")) - 522;
   unsigned long long position = 0;
-  int blocknum;
-  int readsize;
-  int writesize;
+  unsigned int blocknum;
+  size_t readsize;
+  ssize_t writesize;
   char *buffer = malloc(CHUNK_SIZE);
   
   char *progressbar = malloc(41);
   const char *rotatingFoo = "|/-\\";
   
-  for (blocknum = 0 ; 1 ; blocknum++) {
-    readsize = fread(buffer, 1, CHUNK_SIZE, file);
-    if (readsize <= 0) break;
+  for (blocknum = 0 ; position < length ; blocknum++) {
+    if (length - position >= CHUNK_SIZE) {
+      readsize = fread(buffer, 1, CHUNK_SIZE, file);
+    } else {
+      readsize = fread(buffer, 1, length - position, file);
+    }
+    if (readsize <= 0) {
+      if (feof(file))
+        ERROR("Input file is too short");
+      PERROR("Error reading input file");
+    }
     
     reverseWords(buffer, CHUNK_SIZE);
     mdecrypt_generic(blowfish, buffer, CHUNK_SIZE);

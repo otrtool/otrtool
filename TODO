@@ -4,8 +4,6 @@
 * Offer to overwrite destination file in decryptFile()
 * upgrade to weapon of mass destruction (multiple input files)
   * there are various little memory leaks in fetchKeypharse()
-* more error-proof EOF handling in decryptFile()
-  * piping in otrkeys using "tail -f" should be possible
 * guimode: disable interactivity
   * fetchKeyphrase(): email and password
   * decryptFile(): destination file overwriting (once implemented)
