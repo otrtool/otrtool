@@ -18,13 +18,15 @@
 #include <curl/easy.h>
 
 #define ERROR(...) \
-  ({fprintf(stderr, __VA_ARGS__); \
+  ({fprintf(stderr, "\n"); \
+    fprintf(stderr, __VA_ARGS__); \
     fprintf(stderr, "\n"); \
     exit(EXIT_FAILURE); })
 
 #define PERROR(...) \
-  ({fprintf(stderr, __VA_ARGS__); \
-    fprintf(stderr, "\nReason: "); \
+  ({fprintf(stderr, "\n"); \
+    fprintf(stderr, __VA_ARGS__); \
+    fprintf(stderr, ": "); \
     perror(NULL); \
     exit(EXIT_FAILURE); })
 
