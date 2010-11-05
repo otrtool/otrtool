@@ -52,7 +52,7 @@ How to install from source
 
 * stable: [tarball](http://github.com/pyropeter/otrtool/tarball/stable)
 * development: [tarball](http://github.com/pyropeter/otrtool/tarball/master)
-* `git clone git://github.com/pyropeter/otrtool.git`
+* git repository: `git clone git://github.com/pyropeter/otrtool.git`
 
 ### Install dependencies
 
