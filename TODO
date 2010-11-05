@@ -1,7 +1,6 @@
 
 == Until 1.0 ==
 
-* Offer to overwrite destination file in decryptFile()
 * upgrade to weapon of mass destruction (multiple input files)
   * there are various little memory leaks in fetchKeypharse()
 * guimode: disable interactivity

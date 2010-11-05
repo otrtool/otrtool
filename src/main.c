@@ -691,8 +691,18 @@ void decryptFile() {
   fd = open(destfilename, O_WRONLY|O_CREAT|O_EXCL,
     S_IWUSR|S_IRUSR|S_IRGRP|S_IROTH);
   if (fd < 0 && errno == EEXIST) {
-    // TODO: offer to overwrite
-    ERROR("Destination file exists: %s", destfilename);
+    if (guimode) {
+      ERROR("Destination file exists: %s", destfilename);
+    } else {
+      printf("Destination file exists: %s\nType y to overwrite: ",
+          destfilename);
+      if (getchar() == 'y') {
+        fd = open(destfilename, O_WRONLY|O_CREAT|O_TRUNC,
+          S_IWUSR|S_IRUSR|S_IRGRP|S_IROTH);
+      } else {
+        exit(EXIT_FAILURE);
+      }
+    }
   }
   if (fd < 0)
     PERROR("Error opening destination file: %s", destfilename);
