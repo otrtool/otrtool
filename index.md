@@ -33,13 +33,25 @@ How to install using packages
 **This projects needs package maintainers (=> you?)**
 Especially a deb-packet was requested twice.
 
+Changelog
+---------
+
+### 1.0 [development]
+* Offers to overwrite destination file
+* Piping in otrkeys using `tail -f` now works
+* Nicer error messages ;-)
+
+### 0.9 [stable]
+* `otrtool -h` slimmed down to "important" commands
+* (various bugfixes)
+
 How to install from source
 --------------------------
 
 ### Get source
 
-* v0.9 (stable) [tarball](http://github.com/pyropeter/otrtool/tarball/v0.9)
-* current snapshot (unstable) [tarball](http://github.com/pyropeter/otrtool/tarball/master)
+* stable: [tarball](http://github.com/pyropeter/otrtool/tarball/stable)
+* development: [tarball](http://github.com/pyropeter/otrtool/tarball/master)
 * `git clone git://github.com/pyropeter/otrtool.git`
 
 ### Install dependencies
