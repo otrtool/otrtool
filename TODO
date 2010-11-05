@@ -1,9 +1,7 @@
 
 == Until 1.0 ==
 
-* guimode: disable interactivity
-  * fetchKeyphrase(): email and password
-  * decryptFile(): destination file overwriting (once implemented)
+* Testing
 
 == Optional ==
 

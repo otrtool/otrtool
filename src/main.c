@@ -37,8 +37,10 @@
 #define LINE_LENGTH 80
 #define CHUNK_SIZE  2097152    // 2M, must be multiple of 8
 #define MAX_RESPONSE_LENGTH 1000
+#define CREAT_MODE S_IWUSR|S_IRUSR|S_IRGRP|S_IROTH
 
-static int guimode = 0;
+static int guimode = 0; // do not output \r and stuff
+static int interactive = 1; // ask questions instead of exiting
 
 #define VERB_INFO  1
 #define VERB_DEBUG 2
@@ -593,12 +595,14 @@ void fetchKeyphrase() {
   }
   
   if (email == NULL) {
+    if (!interactive) ERROR("Email address not specified");
     email = malloc(51);
     printf("Enter your eMail-address: ");
-    if (scanf("%50s", email) < -1)
+    if (scanf("%50s", email) < 1)
       ERROR("Email invalid");
   }
   if (password == NULL) {
+    if (!interactive) ERROR("Password not specified");
     password = malloc(51);
     printf("Enter your      password: ");
     if (scanf("%50s", password) < 1)
@@ -688,21 +692,12 @@ void decryptFile() {
     destfilename = queryGetParam(header, "FN");
   }
   
-  fd = open(destfilename, O_WRONLY|O_CREAT|O_EXCL,
-    S_IWUSR|S_IRUSR|S_IRGRP|S_IROTH);
+  fd = open(destfilename, O_WRONLY|O_CREAT|O_EXCL, CREAT_MODE);
   if (fd < 0 && errno == EEXIST) {
-    if (guimode) {
-      ERROR("Destination file exists: %s", destfilename);
-    } else {
-      printf("Destination file exists: %s\nType y to overwrite: ",
-          destfilename);
-      if (getchar() == 'y') {
-        fd = open(destfilename, O_WRONLY|O_CREAT|O_TRUNC,
-          S_IWUSR|S_IRUSR|S_IRGRP|S_IROTH);
-      } else {
-        exit(EXIT_FAILURE);
-      }
-    }
+    if (!interactive) ERROR("Destination file exists: %s", destfilename);
+    printf("Destination file exists: %s\nType y to overwrite: ", destfilename);
+    if (getchar() != 'y') exit(EXIT_FAILURE);
+    fd = open(destfilename, O_WRONLY|O_CREAT|O_TRUNC, CREAT_MODE);
   }
   if (fd < 0)
     PERROR("Error opening destination file: %s", destfilename);
@@ -806,6 +801,7 @@ int main(int argc, char *argv[]) {
         break;
       case 'g':
         guimode = 1;
+        interactive = 0;
         break;
       case 'i':
         action = ACTION_INFO;
