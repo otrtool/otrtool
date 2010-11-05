@@ -45,6 +45,12 @@ IRC:                    PyroPeter at freenode
 For bug reports please run otrtool with the "-v"-option. Note that the output
 contains personal data like your email/password, and/or hashes of them.
 
+== VERSION NUMBERS ==
+
+The version numbers follow the scheme major.minor.bugfixes.
+This means that as long as /bugfixes/ increases the software gets more stable.
+/Major/ is only incremented on great architectural changes.
+
 == HISTORY ==
 
 In April, 2010, eddy14 reverse-engineered the otrkey-file-format and OTRs
