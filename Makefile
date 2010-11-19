@@ -8,6 +8,10 @@
 # 'make clean'   removes all .o and executable files
 #
 
+SHELL = /bin/sh
+.SUFFIXES:
+.SUFFIXES: .c .o
+
 DVERSION = v1.0.0
 VERSION := $(shell git describe --long --dirty 2>/dev/null || echo "$(DVERSION)")
 
@@ -38,7 +42,7 @@ $(MAIN): $(OBJS)
 # the rule(a .c file) and $@: the name of the target of the rule (a .o file) 
 # (see the gnu make manual section about automatic variables)
 .c.o:
-	$(CC) $(CFLAGS) -c $<  -o $@
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
 	$(RM) $(OBJS) $(MAIN) $(MAIN).1.gz
