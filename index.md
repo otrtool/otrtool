@@ -36,12 +36,15 @@ Especially a deb-packet was requested twice.
 Changelog
 ---------
 
-### 1.0 `development`
+### 1.1 `development`
+* No changes yet
+
+### 1.0 `stable`
 * Offers to overwrite destination file
 * Piping in otrkeys using `tail -f` now works
 * Nicer error messages ;-)
 
-### 0.9 `stable`
+### 0.9
 * `otrtool -h` slimmed down to "important" commands
 * (various bugfixes)
 
