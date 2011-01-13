@@ -30,8 +30,26 @@ How to install using packages
 ### Gentoo
 * [lem](http://github.com/lem/) wrote [an ebuild](http://bugs.gentoo.org/attachment.cgi?id=251059), but [the submit process is taking a long time](http://bugs.gentoo.org/show_bug.cgi?id=341059).
 
+
+### Debian / Ubuntu
+See [the otrtool-project at suse build services](https://build.opensuse.org/package/show?package=otrtool&project=home%3Apyropeter%3Aotrtool).
+
+##### Debian Etch
+Would need a patch, as gcc 4.1 was unable to parse binary constants.
+
+##### Debian Lenny
+* Stable: [i386](http://download.opensuse.org/repositories/home:/pyropeter:/otrtool/Debian_5.0/i386/otrtool_1.0.0_i386.deb), [amd64](http://download.opensuse.org/repositories/home:/pyropeter:/otrtool/Debian_5.0/amd64/otrtool_1.0.0_amd64.deb)
+
+##### Debian Sid
+Sid is not (yet?) supported by the suse build service.
+The Lenny package could work, try it.
+
+##### Ubuntu
+libmcrypt is not in the official repos and would need a dirty build-service-hack. I will be looking into this soon, maybe.
+
+
 **This projects needs package maintainers (=> you?)**
-Especially a deb-packet was requested twice.
+It would be nice to have a working specfile for the rpm-packages (suse, fedora, etc..)
 
 Changelog
 ---------
