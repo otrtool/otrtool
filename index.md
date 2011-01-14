@@ -51,7 +51,7 @@ The Lenny package could work, try it.
   [i386](http://download.opensuse.org/repositories/home:/pyropeter:/otrtool/xUbuntu_10.04/i386/otrtool_1.0.0_i386.deb),
   [amd64](http://download.opensuse.org/repositories/home:/pyropeter:/otrtool/xUbuntu_10.04/amd64/otrtool_1.0.0_amd64.deb)
 
-### OpenSUSE 10.3
+### OpenSUSE 11.3
 * [1-Click Install](http://software.opensuse.org/ymp/home:pyropeter:otrtool/openSUSE_11.3/otrtool.ymp?base=openSUSE%3A11.3&query=otrtool)
 * [This seems to be some kind of repo-url, for yast probably?](http://download.opensuse.org/repositories/home:/pyropeter:/otrtool/openSUSE_11.3/)
 * [Package Search for otrtool](http://software.opensuse.org/search?q=otrtool&baseproject=openSUSE:11.3)
