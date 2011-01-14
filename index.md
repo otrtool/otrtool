@@ -25,10 +25,9 @@ Packages for your distribution of choice
 
 If you miss a package, contact me!
 
-**This projects needs package maintainers (=> you?)**
-It would be nice to have a working specfile for the rpm-packages (suse, fedora, etc..)
+It would be nice to have package maintainers that frequently use the distribution in question. Currently this only is the case for the gentoo-package.
 
-See [the otrtool-project at suse build services](https://build.opensuse.org/package/show?package=otrtool&project=home%3Apyropeter%3Aotrtool).
+The rpm and deb based packages were built using the suse build services: [home:pyropeter:otrtool](https://build.opensuse.org/package/show?package=otrtool&project=home%3Apyropeter%3Aotrtool).
 
 
 ### Arch Linux
@@ -51,6 +50,11 @@ The Lenny package could work, try it.
 * Stable:
   [i386](http://download.opensuse.org/repositories/home:/pyropeter:/otrtool/xUbuntu_10.04/i386/otrtool_1.0.0_i386.deb),
   [amd64](http://download.opensuse.org/repositories/home:/pyropeter:/otrtool/xUbuntu_10.04/amd64/otrtool_1.0.0_amd64.deb)
+
+### OpenSUSE 10.3
+* [1-Click Install](http://software.opensuse.org/ymp/home:pyropeter:otrtool/openSUSE_11.3/otrtool.ymp?base=openSUSE%3A11.3&query=otrtool)
+* [This seems to be some kind of repo-url, for yast probably?](http://download.opensuse.org/repositories/home:/pyropeter:/otrtool/openSUSE_11.3/)
+* [Package Search for otrtool](http://software.opensuse.org/search?q=otrtool&baseproject=openSUSE:11.3)
 
 Changelog
 ---------
