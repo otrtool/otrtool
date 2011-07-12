@@ -59,6 +59,8 @@ The Lenny package could work, try it.
 Changelog
 ---------
 
+This list will only contain major and minor updates, no bugfix releases.
+
 ### 1.1 `development`
 * No changes yet
 
