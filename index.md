@@ -25,7 +25,7 @@ Packages for your distribution of choice
 
 If you miss a package, contact me!
 
-It would be nice to have package maintainers that frequently use the distribution in question. Currently this only is the case for the gentoo-package.
+**It would be nice to have package maintainers** that frequently use the distribution in question. Currently this only is the case for the gentoo-package.
 
 The rpm and deb based packages were built using the suse build services: [home:pyropeter:otrtool](https://build.opensuse.org/package/show?package=otrtool&project=home%3Apyropeter%3Aotrtool).
 
@@ -90,7 +90,7 @@ The dependencies are:
 
 ### Building
 
-    $ make depend && make
+    $ make
 
 After that, copy the following files to the places they belong:
 
@@ -101,6 +101,7 @@ After that, copy the following files to the places they belong:
 Links
 -----
 
+* [homepage](http://pyropeter.github.com/otrtool/)
 * [github repository](http://github.com/pyropeter/otrtool)
 * [bugtracker](http://github.com/pyropeter/otrtool/issues)
 
