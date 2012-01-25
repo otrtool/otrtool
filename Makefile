@@ -48,6 +48,9 @@ clean:
 	$(RM) $(OBJS) $(MAIN) $(MAIN).1.gz
 
 depend: $(SRCS)
-	makedepend -w70 $^
+	makedepend -w70 -Y $^
 
 # DO NOT DELETE THIS LINE -- make depend needs it
+
+src/md5.o: src/md5.h
+src/main.o: src/md5.h

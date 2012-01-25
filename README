@@ -2,14 +2,6 @@ otrtool aims to provide an open source tool to deal with otrkey-files from
 onlinetvrecoder.com. At the moment it is able to decrypt them, in the
 future a download manager and/or EPG could be added.
 
-== PACKAGES ==
-
-* Arch Linux
-    AUR/otrtool http://aur.archlinux.org/packages.php?ID=41577
-    AUR/otrtool-git http://aur.archlinux.org/packages.php?ID=40775
-
-This projects needs package maintainers (=> you?)
-
 == DEPENDENCIES ==
 
 * libmcrypt             for blowfish
@@ -17,19 +9,16 @@ This projects needs package maintainers (=> you?)
 
 == BUILDING ==
 
-1. make depend
-    Needs X.Org's imake; You may skip this if you are sure you installed
-    all the dependencies.
+* execute `make`
 
-2. make
-
-3. Copy the following files to the places they belong:
+* Copy the following files to the places they belong:
     ./otrtool           the main binary
     ./otrtool.1.gz      the gzip'ed manpage
     ./LICENSE           the (rights waiver) license
 
 == LINKS ==
 
+project homepage:       http://pyropeter.github.com/otrtool/
 github repository:      http://github.com/pyropeter/otrtool
 bugtracker:             http://github.com/pyropeter/otrtool/issues
 
