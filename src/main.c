@@ -154,6 +154,13 @@ void * hex2bin(char *data_) {
   return (void*)result;
 }
 
+// C does not support binary constants, but gcc >= 4.3 does.
+// Because we can't really expect people to update their compilers in four
+// years (4.3 is from march 2008), the following defines will substitute
+// the three values used by base64Encode with their decimal equivalent.
+#define B_11 3
+#define B_1111 15
+#define B_111111 63
 char * base64Encode(void *data_, int len) {
   unsigned char *data = data_;
   static const char *b64 = "\
@@ -168,26 +175,26 @@ abcdefghijklmnopqrstuvwxyz\
   
   for (i = len / 3 ; i > 0 ; i--) {
     resptr[0] = b64[  data[0]             >> 2 ];
-    resptr[1] = b64[ (data[0] &     0b11) << 4 
+    resptr[1] = b64[ (data[0] &     B_11) << 4
                     | data[1]             >> 4 ];
-    resptr[2] = b64[ (data[1] &   0b1111) << 2 
+    resptr[2] = b64[ (data[1] &   B_1111) << 2
                     | data[2]             >> 6 ];
-    resptr[3] = b64[  data[2] & 0b111111       ];
+    resptr[3] = b64[  data[2] & B_111111       ];
     resptr += 4;
     data += 3;
   }
   
   if (len < blocks * 3 - 1) {
     resptr[0] = b64[  data[0]             >> 2 ];
-    resptr[1] = b64[ (data[0] &     0b11) << 4 ];
+    resptr[1] = b64[ (data[0] &     B_11) << 4 ];
     resptr[2] = '=';
     resptr[3] = '=';
     resptr += 4;
   } else if (len < blocks * 3) {
     resptr[0] = b64[  data[0]             >> 2 ];
-    resptr[1] = b64[ (data[0] &     0b11) << 4 
+    resptr[1] = b64[ (data[0] &     B_11) << 4
                     | data[1]             >> 4 ];
-    resptr[2] = b64[ (data[1] &   0b1111) << 2 ];
+    resptr[2] = b64[ (data[1] &   B_1111) << 2 ];
     resptr[3] = '=';
     resptr += 4;
   }
