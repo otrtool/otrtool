@@ -17,7 +17,11 @@ VERSION := $(shell git describe --long --dirty 2>/dev/null || echo "$(DVERSION)"
 
 CC = gcc
 CFLAGS = -Wall -g -DVERSION='"$(VERSION)"'
-LIBS = -lmcrypt -lcurl
+LDFLAGS = -lmcrypt -lcurl
+
+# large file support
+CFLAGS += $(shell getconf LFS_CFLAGS)
+LDFLAGS += $(shell getconf LFS_LDFLAGS)
 
 SRCS = src/md5.c src/main.c
 MAIN = otrtool
@@ -34,7 +38,7 @@ doc:
 	@echo Manpage was gzipped successfully
 
 $(MAIN): $(OBJS)
-	$(CC) $(CFLAGS) -o $(MAIN) $(OBJS) $(LIBS)
+	$(CC) $(CFLAGS) -o $(MAIN) $(OBJS) $(LDFLAGS)
 	@echo Build successful
 
 # this is a suffix replacement rule for building .o's from .c's
