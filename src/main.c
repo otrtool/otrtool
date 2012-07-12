@@ -80,6 +80,8 @@ static size_t WriteMemoryCallback(void *ptr, size_t size,
         : 0;
   }
   
+  // the following line allocates one byte more than needed to allow
+  // for easy conversion to a null-terminated string
   mem->memory = realloc(mem->memory, mem->size + realsize + 1);
   if (mem->memory) {
     memcpy(&(mem->memory[mem->size]), ptr, realsize);
@@ -623,12 +625,18 @@ void fetchKeyphrase() {
       (struct MemoryStruct *)contactServer(request);
   printf("Server responded.\n");
   
+  // null-terminate response (memory for null-byte _was_ allocated
+  // in WriteMemoryCallback, I checked twice :-)
   response->memory[response->size] = 0;
+
+  // skip initial whitespace
+  char *message = response->memory;
+  message += strspn(message, " \t\n");
   
-  if (isBase64(response->memory) == 0) {
-    if (memcmp(response->memory,"MessageToBePrintedInDecoder",27) ==0) {
+  if (isBase64(message) == 0) {
+    if (memcmp(message,"MessageToBePrintedInDecoder",27) ==0) {
       printf("Server sent us this sweet message:\n");
-      quote(response->memory + 27);
+      quote(message + 27);
     } else {
       printf("Server sent us this ugly crap:\n");
       dumpHex(response->memory, response->size);
@@ -637,7 +645,7 @@ void fetchKeyphrase() {
   }
   
   int info_len;
-  char *info_crypted = base64Decode(response->memory, &info_len);
+  char *info_crypted = base64Decode(message, &info_len);
   
   if (info_len % 8 != 0) {
     printf("Length of response must be a multiple of 8.");
