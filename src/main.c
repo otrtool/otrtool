@@ -3,6 +3,7 @@
 #include <string.h>
 #include <strings.h>
 #include <unistd.h>
+#include <termios.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -375,6 +376,7 @@ char * getHeader() {
   mdecrypt_generic(blowfish, header, 512);
   mcrypt_generic_deinit(blowfish);
   mcrypt_module_close(blowfish);
+  header[512] = 0;
   
   char *padding = strstr((char*)header, "&PD=");
   if (padding == NULL)
@@ -386,7 +388,6 @@ char * getHeader() {
     dumpQuerystring((char*)header);
     fputs("\n", stderr);
   }
-  header[512] = 0;
   return (char*)header;
 }
 
@@ -490,12 +491,15 @@ char * generateRequest(void *bigkey, char *date) {
   free(code);
   free(dump);
   free(iv);
+  free(filename);
+  free(thatohthing);
   return result;
 }
 
 void * contactServer(char *request) {
   // http://curl.haxx.se/libcurl/c/getinmemory.html
   CURL *curl_handle;
+  char errorstr[CURL_ERROR_SIZE];
   
   struct MemoryStruct *chunk = malloc(sizeof(struct MemoryStruct));
   chunk->memory=NULL; /* we expect realloc(NULL, size) to work */ 
@@ -519,8 +523,14 @@ void * contactServer(char *request) {
      field, so we provide one */ 
   curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "libcurl-agent/1.0");
   
+  /* set verbosity and error message buffer */
+  if (verbosity >= VERB_DEBUG)
+    curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, 1);
+  curl_easy_setopt(curl_handle, CURLOPT_ERRORBUFFER, errorstr);
+  
   /* get it! */ 
-  curl_easy_perform(curl_handle);
+  if (curl_easy_perform(curl_handle) != 0)
+    ERROR("cURL error: %s", errorstr);
   
   /* cleanup curl stuff */ 
   curl_easy_cleanup(curl_handle);
@@ -575,6 +585,7 @@ char * decryptResponse(char *response, int length, void *bigkey) {
 }
 
 void fetchKeyphrase() {
+  struct termios ios0, ios1;
   time_t time_ = time(NULL);
   char *date = malloc(9);
   strftime(date, 9, "%Y%m%d", gmtime(&time_));
@@ -590,13 +601,23 @@ void fetchKeyphrase() {
     fputs("Enter your eMail-address: ", stderr);
     if (scanf("%50s", email) < 1)
       ERROR("Email invalid");
+    while (getchar() != '\n');
   }
   if (password == NULL) {
     if (!interactive) ERROR("Password not specified");
     password = malloc(51);
-    fputs("Enter your      password: ", stderr);
-    if (scanf("%50s", password) < 1)
+    fputs("Enter your password: ", stderr);
+    tcgetattr(0, &ios0);
+    ios1 = ios0;
+    ios1.c_lflag &= ~ECHO;
+    tcsetattr(0, TCSAFLUSH, &ios1);
+    if (scanf("%50s", password) < 1) {
+      tcsetattr(0, TCSAFLUSH, &ios0);
       ERROR("Password invalid");
+    }
+    tcsetattr(0, TCSAFLUSH, &ios0);
+    while (getchar() != '\n');
+    fputc('\n', stderr);
   }
   
   char *bigkey = generateBigkey(date);
@@ -649,6 +670,7 @@ void fetchKeyphrase() {
   free(date);
   free(bigkey);
   free(request);
+  free(response->memory);
   free(response);
   free(info_crypted);
 }
