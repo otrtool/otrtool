@@ -120,11 +120,12 @@ char * bin2hex(void *data_, int len) {
 }
 
 void * hex2bin(char *data_) {
-  int len = strlen(data_);
+  int len = strlen(data_) / 2;
   unsigned char *data = (unsigned char*)data_;
   // never tested with lowercase letters!
   unsigned char *result = malloc(sizeof(char) * len + 1);
   int foo, bar;
+  result[len] = 0;
   for (len-- ; len >= 0 ; len--) {
     foo = data[len*2];
     if (foo < 0x41) {
@@ -152,7 +153,6 @@ void * hex2bin(char *data_) {
     }
     result[len] += bar;
   }
-  result[len] = 0;
   return (void*)result;
 }
 
