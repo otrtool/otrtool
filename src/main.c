@@ -93,18 +93,6 @@ static size_t WriteMemoryCallback(void *ptr, size_t size,
 
 // ######################## generic functions ####################
 
-void reverseWords(void *in_, int size) {
-  // swaps byte order of 4 byte chunks
-  unsigned char *in = in_;
-  unsigned char *out = malloc(size);
-  int i;
-  for (i = 0; i < size; i++) {
-    out[i + 3 - (i%4 * 2)] = in[i];
-  }
-  memcpy(in, out, size);
-  free(out);
-}
-
 char * bin2hex(void *data_, int len) {
   unsigned char *data = data_;
   unsigned char *result = malloc(sizeof(char) * len * 2 + 1);
@@ -377,16 +365,14 @@ char * getHeader() {
   if (fread(header, 512, 1, file) < 1)
     PERROR("Error reading file");
   MCRYPT blowfish;
-  blowfish = mcrypt_module_open("blowfish", NULL, "ecb", NULL);
+  blowfish = mcrypt_module_open("blowfish-compat", NULL, "ecb", NULL);
   unsigned char hardKey[] = {
       0xEF, 0x3A, 0xB2, 0x9C, 0xD1, 0x9F, 0x0C, 0xAC,
       0x57, 0x59, 0xC7, 0xAB, 0xD1, 0x2C, 0xC9, 0x2B,
       0xA3, 0xFE, 0x0A, 0xFE, 0xBF, 0x96, 0x0D, 0x63,
       0xFE, 0xBD, 0x0F, 0x45};
   mcrypt_generic_init(blowfish, hardKey, 28, NULL);
-  reverseWords(header, 512);
   mdecrypt_generic(blowfish, header, 512);
-  reverseWords(header, 512);
   mcrypt_generic_deinit(blowfish);
   mcrypt_module_close(blowfish);
   
@@ -452,7 +438,7 @@ void * generateBigkey(char *date) {
 char * generateRequest(void *bigkey, char *date) {
   char *filename = queryGetParam(header, "FN");
   char *thatohthing = queryGetParam(header, "OH");
-  MCRYPT blowfish = mcrypt_module_open("blowfish", NULL, "cbc", NULL);
+  MCRYPT blowfish = mcrypt_module_open("blowfish-compat", NULL, "cbc", NULL);
   char *iv = malloc(mcrypt_enc_get_iv_size(blowfish));
   char *code = malloc(513);
   char *dump = malloc(513);
@@ -482,9 +468,7 @@ char * generateRequest(void *bigkey, char *date) {
   }
   
   mcrypt_generic_init(blowfish, bigkey, 28, iv);
-  reverseWords(code, 512);
   mcrypt_generic(blowfish, code, 512);
-  reverseWords(code, 512);
   mcrypt_generic_deinit(blowfish);
   mcrypt_module_close(blowfish);
   
@@ -559,7 +543,7 @@ void * contactServer(char *request) {
 }
 
 char * decryptResponse(char *response, int length, void *bigkey) {
-  MCRYPT blowfish = mcrypt_module_open("blowfish", NULL, "ecb", NULL);
+  MCRYPT blowfish = mcrypt_module_open("blowfish-compat", NULL, "ecb", NULL);
   
   length -= 8;
   
@@ -567,9 +551,7 @@ char * decryptResponse(char *response, int length, void *bigkey) {
   memcpy(result, response+8, length);
   
   mcrypt_generic_init(blowfish, bigkey, 28, NULL);
-  reverseWords(result, length);
   mdecrypt_generic(blowfish, result, length);
-  reverseWords(result, length);
   mcrypt_generic_deinit(blowfish);
   mcrypt_module_close(blowfish);
   
@@ -731,7 +713,7 @@ void decryptFile() {
   fputs("Decrypting...\n", stderr); // ---------------------------------
   
   void *key = hex2bin(keyphrase);
-  MCRYPT blowfish = mcrypt_module_open("blowfish", NULL, "ecb", NULL);
+  MCRYPT blowfish = mcrypt_module_open("blowfish-compat", NULL, "ecb", NULL);
   mcrypt_generic_init(blowfish, key, 28, NULL);
   
   unsigned long long length = atoll(queryGetParam(header, "SZ")) - 522;
@@ -739,14 +721,15 @@ void decryptFile() {
   unsigned int blocknum;
   size_t readsize;
   ssize_t writesize;
-  char *buffer = malloc(CHUNK_SIZE);
+  static char buffer[65536];
   
-  char *progressbar = malloc(41);
+  char progressbar[41];
   const char *rotatingFoo = "|/-\\";
   
-  for (blocknum = 0 ; position < length ; blocknum++) {
-    if (length - position >= CHUNK_SIZE) {
-      readsize = fread(buffer, 1, CHUNK_SIZE, file);
+  blocknum = 0;
+  while (position < length) {
+    if (length - position >= sizeof(buffer)) {
+      readsize = fread(buffer, 1, sizeof(buffer), file);
     } else {
       readsize = fread(buffer, 1, length - position, file);
     }
@@ -756,25 +739,27 @@ void decryptFile() {
       PERROR("Error reading input file");
     }
     
-    reverseWords(buffer, CHUNK_SIZE);
-    mdecrypt_generic(blowfish, buffer, CHUNK_SIZE);
-    reverseWords(buffer, CHUNK_SIZE);
+    /* If the payload length is not a multiple of eight,
+     * the last few bytes are stored unencrypted */
+    mdecrypt_generic(blowfish, buffer, readsize - readsize % 8);
     
     writesize = write(fd, buffer, readsize);
-    if (writesize != readsize)
+    if ((size_t)writesize != readsize)
       PERROR("Error writing to destination file");
     
     position += writesize;
-    if (guimode == 0) {
-      memset(progressbar, ' ', 40);
-      memset(progressbar, '=', (position*40)/length);
-      progressbar[40] = 0;
-      fprintf(stderr, "[%s] %3lli%% %c\r", progressbar, (position*100)/length,
-        rotatingFoo[blocknum % 4]);
-    } else {
-      fprintf(stderr, "gui> %3lli\n", (position*100)/length);
+    if (position % CHUNK_SIZE == 0) {
+      if (guimode == 0) {
+        memset(progressbar, ' ', 40);
+        memset(progressbar, '=', (position*40)/length);
+        progressbar[40] = 0;
+        fprintf(stderr, "[%s] %3lli%% %c\r", progressbar, (position*100)/length,
+          rotatingFoo[blocknum++ % 4]);
+      } else {
+        fprintf(stderr, "gui> %3lli\n", (position*100)/length);
+      }
+      fflush(stderr);
     }
-    fflush(stderr);
   }
   
   if (guimode == 0) {
@@ -789,9 +774,7 @@ void decryptFile() {
   if (close(fd) < 0)
     PERROR("Error closing destination file.");
   
-  free(progressbar);
   free(key);
-  free(buffer);
 }
 
 void usageError() {
