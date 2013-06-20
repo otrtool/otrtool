@@ -694,6 +694,58 @@ void openFile() {
   header = getHeader();
 }
 
+typedef struct verifyFile_ctx {
+  MD5_CTX ctx;
+  char hash1[16];
+  int input;
+} vfy_t;
+
+void verifyFile_init(vfy_t *vfy, int input) {
+  char *hash_hex, *hash;
+  int i;
+  
+  memset(vfy, 0, sizeof(*vfy));
+  vfy->input = input;
+  
+  /* get MD5 sum from 'OH' or 'FH' header field */
+  hash_hex = queryGetParam(header, vfy->input?"OH":"FH");
+  if (hash_hex == NULL || strlen(hash_hex) != 48)
+    ERROR("Missing hash in file header / unexpected format");
+  for (i=1; i<16; ++i) {
+    hash_hex[2*i] = hash_hex[3*i];
+    hash_hex[2*i+1] = hash_hex[3*i+1];
+  }
+  hash_hex[32] = 0;
+  if (verbosity >= VERB_DEBUG)
+    fprintf(stderr, "Checking %s against MD5 sum: %s\n",
+      vfy->input?"input":"output", hash_hex);
+  hash = hex2bin(hash_hex);
+  memcpy(vfy->hash1, hash, 16);
+  
+  /* calculate MD5 sum of file (without header) */
+  memset(&vfy->ctx, 0, sizeof(vfy->ctx));
+  MD5_Init(&vfy->ctx);
+  
+  free(hash_hex);
+  free(hash);
+}
+
+void verifyFile_data(vfy_t *vfy, char *buffer, size_t len) {
+  MD5_Update(&vfy->ctx, buffer, len);
+}
+
+void verifyFile_final(vfy_t *vfy) {
+  unsigned char md5[16];
+  
+  MD5_Final(md5, &vfy->ctx);
+  if (memcmp(vfy->hash1, md5, 16) != 0) {
+    if (vfy->input)
+      ERROR("Input file had errors. Output may or may not be usable.");
+    else
+      ERROR("Output verification failed. Wrong key?");
+  }
+}
+
 void decryptFile() {
   int fd;
   char *headerFN;
@@ -732,7 +784,7 @@ void decryptFile() {
   if (fd < 0)
     PERROR("Error opening destination file: %s", destfilename);
   
-  fputs("Decrypting...\n", stderr); // ---------------------------------
+  fputs("Decrypting and verifying...\n", stderr); // -----------------------
   
   void *key = hex2bin(keyphrase);
   MCRYPT blowfish = mcrypt_module_open("blowfish-compat", NULL, "ecb", NULL);
@@ -747,6 +799,10 @@ void decryptFile() {
   
   char progressbar[41];
   const char *rotatingFoo = "|/-\\";
+  vfy_t vfy_in, vfy_out;
+  
+  verifyFile_init(&vfy_in, 1);
+  verifyFile_init(&vfy_out, 0);
   
   blocknum = 0;
   while (position < length) {
@@ -761,9 +817,11 @@ void decryptFile() {
       PERROR("Error reading input file");
     }
     
+    verifyFile_data(&vfy_in, buffer, readsize);
     /* If the payload length is not a multiple of eight,
      * the last few bytes are stored unencrypted */
     mdecrypt_generic(blowfish, buffer, readsize - readsize % 8);
+    verifyFile_data(&vfy_out, buffer, readsize);
     
     writesize = write(fd, buffer, readsize);
     if ((size_t)writesize != readsize)
@@ -789,6 +847,10 @@ void decryptFile() {
   } else {
     fputs("gui> Finished\n", stderr);
   }
+  
+  verifyFile_final(&vfy_in);
+  verifyFile_final(&vfy_out);
+  fputs("OK checksums from header match\n", stderr);
   
   mcrypt_generic_deinit(blowfish);
   mcrypt_module_close(blowfish);
