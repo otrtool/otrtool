@@ -59,6 +59,7 @@ static char *destfolder = NULL;
 static char *destfilename = NULL;
 
 static FILE *file = NULL;
+static FILE *keyfile = NULL;
 static char *header = NULL;
 static char *info = NULL;
 
@@ -584,6 +585,51 @@ char * decryptResponse(char *response, int length, void *bigkey) {
   return result;
 }
 
+void keycache_open() {
+  char *home, *keyfilename;
+  
+  if ((home = getenv("HOME")) == NULL) return;
+  keyfilename = malloc(strlen(home) + 20);
+  strcpy(keyfilename, home);
+  strcat(keyfilename, "/.otrkey_cache");
+  keyfile = fopen(keyfilename, "a+");
+  free(keyfilename);
+}
+
+char *keycache_get(const char *fh) {
+  char *cachephrase, *cachefh;
+  static char line[512];
+  
+  if (fh == NULL || keyfile == NULL) return NULL;
+  rewind(keyfile);
+  while (fgets(line, sizeof(line), keyfile) != NULL) {
+    cachefh = strtok(line, " \t\r\n");
+    cachephrase = strtok(NULL, " \t\r\n");
+    if (cachephrase == NULL || cachefh == NULL) continue;
+    if (strcmp(cachefh, fh) == 0) return cachephrase;
+  }
+  if (!feof(keyfile)) PERROR("fgets");
+  return NULL;
+}
+
+void keycache_put(const char *fh, const char *keyphrase) {
+  char *cachephrase, *fn;
+  
+  if (fh == NULL || keyfile == NULL) return;
+  if ((cachephrase = keycache_get(fh)) != NULL) {
+    if (strcmp(keyphrase, cachephrase) != 0)
+      fputs("warning: differing keyphrase was found in cache file!\n", stderr);
+    else
+      fputs("info: keyphrase was already in cache\n", stderr);
+    return;
+  }
+  fn = queryGetParam(header, "FN");
+  if (fprintf(keyfile, "%s\t%s\t# %s\n", fh, keyphrase, fn) < 0)
+    PERROR("fprintf");
+  fflush(keyfile);
+  fputs("info: saved keyphrase to ~/.otrkey_cache\n", stderr);
+}
+
 void fetchKeyphrase() {
   struct termios ios0, ios1;
   time_t time_ = time(NULL);
@@ -666,6 +712,7 @@ void fetchKeyphrase() {
     ERROR("Keyphrase has wrong length");
   
   fprintf(stderr, "Keyphrase: %s\n", keyphrase);
+  keycache_put(queryGetParam(header, "FH"), keyphrase);
   
   free(date);
   free(bigkey);
@@ -937,6 +984,7 @@ int main(int argc, char *argv[]) {
   
   if (!isatty(0)) interactive = 0;
   openFile();
+  keycache_open();
   
   switch (action) {
     case ACTION_INFO:
@@ -947,8 +995,13 @@ int main(int argc, char *argv[]) {
       fetchKeyphrase();
       break;
     case ACTION_DECRYPT:
-      if (keyphrase == NULL)
-        fetchKeyphrase();
+      if (keyphrase == NULL) {
+        keyphrase = keycache_get(queryGetParam(header, "FH"));
+        if (keyphrase)
+          fprintf(stderr, "Keyphrase from cache: %s\n", keyphrase);
+        else
+          fetchKeyphrase();
+      }
       
       errno = 0;
       nice(10);
