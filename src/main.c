@@ -797,6 +797,7 @@ void decryptFile() {
   int fd;
   char *headerFN;
   struct stat st;
+  FILE *destfile;
   
   if (destfolder != NULL) {
     headerFN = queryGetParam(header, "FN");
@@ -830,6 +831,8 @@ void decryptFile() {
   }
   if (fd < 0)
     PERROR("Error opening destination file: %s", destfilename);
+  if ((destfile = fdopen(fd, "wb")) == NULL)
+    PERROR("fdopen");
   
   fputs("Decrypting and verifying...\n", stderr); // -----------------------
   
@@ -841,7 +844,7 @@ void decryptFile() {
   unsigned long long position = 0;
   unsigned int blocknum;
   size_t readsize;
-  ssize_t writesize;
+  size_t writesize;
   static char buffer[65536];
   
   char progressbar[41];
@@ -870,8 +873,8 @@ void decryptFile() {
     mdecrypt_generic(blowfish, buffer, readsize - readsize % 8);
     verifyFile_data(&vfy_out, buffer, readsize);
     
-    writesize = write(fd, buffer, readsize);
-    if ((size_t)writesize != readsize)
+    writesize = fwrite(buffer, 1, readsize, destfile);
+    if (writesize != readsize)
       PERROR("Error writing to destination file");
     
     position += writesize;
@@ -902,7 +905,7 @@ void decryptFile() {
   mcrypt_generic_deinit(blowfish);
   mcrypt_module_close(blowfish);
   
-  if (close(fd) < 0)
+  if (fclose(destfile) != 0)
     PERROR("Error closing destination file.");
   
   free(key);
