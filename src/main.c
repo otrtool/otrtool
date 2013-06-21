@@ -30,6 +30,8 @@
     perror(NULL); \
     exit(EXIT_FAILURE); })
 
+#define MIN(a,b) ((a)<(b)?(a):(b))
+
 #ifndef VERSION
   #define VERSION "version unknown"
 #endif
@@ -48,6 +50,7 @@ static int verbosity = VERB_INFO;
 #define ACTION_INFO       1
 #define ACTION_FETCHKEY   2
 #define ACTION_DECRYPT    3
+#define ACTION_VERIFY     4
 static int action = ACTION_INFO;
 
 static char *email = NULL;
@@ -792,6 +795,32 @@ void verifyFile_final(vfy_t *vfy) {
   }
 }
 
+void verifyOnly() {
+  vfy_t vfy;
+  size_t n;
+  static char buffer[65536];
+  long long length;
+  
+  length = atoll(queryGetParam(header, "SZ")) - 522;
+  fputs("Verifying otrkey...\n", stderr);
+  verifyFile_init(&vfy, 1);
+  while (length > 0
+      && (n = fread(buffer, 1, MIN(length, sizeof(buffer)), file)) > 0) {
+    verifyFile_data(&vfy, buffer, n);
+    length -= n;
+  }
+  if (length > 0) {
+    if (!feof(file)) PERROR("fread");
+    fputs("file is too short\n", stderr);
+  }
+  if (fread(buffer, 1, 1, file) > 0)
+    fputs("file contains trailing garbage\n", stderr);
+  else if (!feof(file))
+    PERROR("fread");
+  verifyFile_final(&vfy);
+  fputs("file is OK\n", stderr);
+}
+
 void decryptFile() {
   int fd;
   char *headerFN;
@@ -912,13 +941,15 @@ void decryptFile() {
 
 void usageError() {
   fputs("\n"
-    "Usage: otrtool [-h] [-v] [-i|-f|-x] [-k <keyphrase>] [-e <email> -p <password>]\n"
-    "               [-D <destfolder>] [-O <destfile>] <otrkey-file>\n"
+    "Usage: otrtool [-h] [-v] [-i|-f|-x|-y] [-k <keyphrase>] [-e <email>]\n"
+    "               [-p <password>] [-D <destfolder>] [-O <destfile>]\n"
+    "               <otrkey-file>\n"
     "\n"
     "MODES OF OPERATION\n"
     "  -i | Display information about file (default action)\n"
     "  -f | Fetch keyphrase for file\n"
     "  -x | Decrypt file\n"
+    "  -y | Verify only\n"
     "\n"
     "FREQUENTLY USED ARGUMENTS\n"
     "  -k | Do not fetch keyphrase, use this one\n"
@@ -932,7 +963,7 @@ int main(int argc, char *argv[]) {
   fputs("OTR-Tool, " VERSION "\n", stderr);
   
   int opt;
-  while ( (opt = getopt(argc, argv, "hvgifxk:e:p:D:O:")) != -1) {
+  while ( (opt = getopt(argc, argv, "hvgifxyk:e:p:D:O:")) != -1) {
     switch (opt) {
       case 'h':
         usageError();
@@ -953,6 +984,9 @@ int main(int argc, char *argv[]) {
         break;
       case 'x':
         action = ACTION_DECRYPT;
+        break;
+      case 'y':
+        action = ACTION_VERIFY;
         break;
       case 'k':
         keyphrase = optarg;
@@ -1019,6 +1053,9 @@ int main(int argc, char *argv[]) {
       #endif
       
       decryptFile();
+      break;
+    case ACTION_VERIFY:
+      verifyOnly();
       break;
   }
   
