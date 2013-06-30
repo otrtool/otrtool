@@ -5,10 +5,7 @@
   packages could then just link /bin/otrdecoder -> /bin/otrtool
   * Would this be option-compatible to the proprietary otrdecoder?
 * config in ~
-* otrkey-cache for passphrases
 * twittelevision
 * pretty formatting for -i
-* check integrity of decrypted file
-  * where is the hash saved/in what format? (header is more likely, imo)
 * upgrade to weapon of mass destruction (multiple input files)
   * there are various little memory leaks in fetchKeypharse()

@@ -3,6 +3,7 @@
 #include <string.h>
 #include <strings.h>
 #include <unistd.h>
+#include <termios.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -58,6 +59,7 @@ static char *destfolder = NULL;
 static char *destfilename = NULL;
 
 static FILE *file = NULL;
+static FILE *keyfile = NULL;
 static char *header = NULL;
 static char *info = NULL;
 
@@ -93,18 +95,6 @@ static size_t WriteMemoryCallback(void *ptr, size_t size,
 
 // ######################## generic functions ####################
 
-void reverseWords(void *in_, int size) {
-  // swaps byte order of 4 byte chunks
-  unsigned char *in = in_;
-  unsigned char *out = malloc(size);
-  int i;
-  for (i = 0; i < size; i++) {
-    out[i + 3 - (i%4 * 2)] = in[i];
-  }
-  memcpy(in, out, size);
-  free(out);
-}
-
 char * bin2hex(void *data_, int len) {
   unsigned char *data = data_;
   unsigned char *result = malloc(sizeof(char) * len * 2 + 1);
@@ -120,11 +110,12 @@ char * bin2hex(void *data_, int len) {
 }
 
 void * hex2bin(char *data_) {
-  int len = strlen(data_);
+  int len = strlen(data_) / 2;
   unsigned char *data = (unsigned char*)data_;
   // never tested with lowercase letters!
   unsigned char *result = malloc(sizeof(char) * len + 1);
   int foo, bar;
+  result[len] = 0;
   for (len-- ; len >= 0 ; len--) {
     foo = data[len*2];
     if (foo < 0x41) {
@@ -152,7 +143,6 @@ void * hex2bin(char *data_) {
     }
     result[len] += bar;
   }
-  result[len] = 0;
   return (void*)result;
 }
 
@@ -288,7 +278,7 @@ void quote(char *message) {
     }
     if (index == LINE_LENGTH) {
       line[index++] = '\n';
-      fwrite(line, index, 1, stdout);
+      fwrite(line, index, 1, stderr);
       line[0] = '>';
       line[1] = ' ';
       index = 2;
@@ -296,7 +286,7 @@ void quote(char *message) {
     message++;
   }
   line[index++] = '\n';
-  if (index != 3) fwrite(line, index, 1, stdout);
+  if (index != 3) fwrite(line, index, 1, stderr);
 }
 
 void dumpQuerystring(char *query) {
@@ -313,7 +303,7 @@ void dumpQuerystring(char *query) {
   for (; length > 0 ; length --) {
     if (*query == '&') {
       line[index] = '\n';
-      fwrite(line, index + 1, 1, stdout);
+      fwrite(line, index + 1, 1, stderr);
       index = 0;
     }
     line[index] = *query;
@@ -321,14 +311,14 @@ void dumpQuerystring(char *query) {
     index++;
     if (index == LINE_LENGTH) {
       line[index] = '\n';
-      fwrite(line, index + 1, 1, stdout);
+      fwrite(line, index + 1, 1, stderr);
       line[0] = ' ';
       index = 1;
     }
     query++;
   }
   line[index] = '\n';
-  if (index != LINE_LENGTH) fwrite(line, index + 1, 1, stdout);
+  if (index != LINE_LENGTH) fwrite(line, index + 1, 1, stderr);
 }
 
 void dumpHex(void *data_, int len) {
@@ -362,10 +352,10 @@ void dumpHex(void *data_, int len) {
     line[67] = '|';
     
     line[68] = 0;
-    printf("%08x  %s\n", pos, line);
+    fprintf(stderr, "%08x  %s\n", pos, line);
     hexrep += 32;
   }
-  printf("%08x\n", len);
+  fprintf(stderr, "%08x\n", len);
   free(line);
   free(hexrep_orig);
 }
@@ -377,18 +367,17 @@ char * getHeader() {
   if (fread(header, 512, 1, file) < 1)
     PERROR("Error reading file");
   MCRYPT blowfish;
-  blowfish = mcrypt_module_open("blowfish", NULL, "ecb", NULL);
+  blowfish = mcrypt_module_open("blowfish-compat", NULL, "ecb", NULL);
   unsigned char hardKey[] = {
       0xEF, 0x3A, 0xB2, 0x9C, 0xD1, 0x9F, 0x0C, 0xAC,
       0x57, 0x59, 0xC7, 0xAB, 0xD1, 0x2C, 0xC9, 0x2B,
       0xA3, 0xFE, 0x0A, 0xFE, 0xBF, 0x96, 0x0D, 0x63,
       0xFE, 0xBD, 0x0F, 0x45};
   mcrypt_generic_init(blowfish, hardKey, 28, NULL);
-  reverseWords(header, 512);
   mdecrypt_generic(blowfish, header, 512);
-  reverseWords(header, 512);
   mcrypt_generic_deinit(blowfish);
   mcrypt_module_close(blowfish);
+  header[512] = 0;
   
   char *padding = strstr((char*)header, "&PD=");
   if (padding == NULL)
@@ -396,11 +385,10 @@ char * getHeader() {
   *padding = 0;
   
   if (verbosity >= VERB_DEBUG) {
-    printf("\nDumping decrypted header:\n");
+    fputs("\nDumping decrypted header:\n", stderr);
     dumpQuerystring((char*)header);
-    printf("\n");
+    fputs("\n", stderr);
   }
-  header[512] = 0;
   return (char*)header;
 }
 
@@ -438,7 +426,7 @@ void * generateBigkey(char *date) {
   *ptr = 0;
   
   if (verbosity >= VERB_DEBUG) {
-    printf("\nGenerated BigKey: %s\n\n", bigkey_hex);
+    fprintf(stderr, "\nGenerated BigKey: %s\n\n", bigkey_hex);
   }
   
   void *res = hex2bin(bigkey_hex);
@@ -452,7 +440,7 @@ void * generateBigkey(char *date) {
 char * generateRequest(void *bigkey, char *date) {
   char *filename = queryGetParam(header, "FN");
   char *thatohthing = queryGetParam(header, "OH");
-  MCRYPT blowfish = mcrypt_module_open("blowfish", NULL, "cbc", NULL);
+  MCRYPT blowfish = mcrypt_module_open("blowfish-compat", NULL, "cbc", NULL);
   char *iv = malloc(mcrypt_enc_get_iv_size(blowfish));
   char *code = malloc(513);
   char *dump = malloc(513);
@@ -476,22 +464,20 @@ char * generateRequest(void *bigkey, char *date) {
 &D=%s", filename, thatohthing, email, password, dump);
   
   if (verbosity >= VERB_DEBUG) {
-    printf("\nGenerated request-'code':\n");
+    fputs("\nGenerated request-'code':\n", stderr);
     dumpQuerystring(code);
-    printf("\n");
+    fputs("\n", stderr);
   }
   
   mcrypt_generic_init(blowfish, bigkey, 28, iv);
-  reverseWords(code, 512);
   mcrypt_generic(blowfish, code, 512);
-  reverseWords(code, 512);
   mcrypt_generic_deinit(blowfish);
   mcrypt_module_close(blowfish);
   
   if (verbosity >= VERB_DEBUG) {
-    printf("\nEncrypted request-'code':\n");
+    fputs("\nEncrypted request-'code':\n", stderr);
     dumpHex(code, 512);
-    printf("\n");
+    fputs("\n", stderr);
   }
   
   snprintf(result, 1024, "http://87.236.198.182/quelle_neu1.php\
@@ -500,18 +486,21 @@ char * generateRequest(void *bigkey, char *date) {
 &ZZ=%s", base64Encode(code, 512), email, date);
   
   if (verbosity >= VERB_DEBUG) {
-    printf("\nRequest:\n%s\n\n", result);
+    fprintf(stderr, "\nRequest:\n%s\n\n", result);
   }
   
   free(code);
   free(dump);
   free(iv);
+  free(filename);
+  free(thatohthing);
   return result;
 }
 
 void * contactServer(char *request) {
   // http://curl.haxx.se/libcurl/c/getinmemory.html
   CURL *curl_handle;
+  char errorstr[CURL_ERROR_SIZE];
   
   struct MemoryStruct *chunk = malloc(sizeof(struct MemoryStruct));
   chunk->memory=NULL; /* we expect realloc(NULL, size) to work */ 
@@ -535,8 +524,14 @@ void * contactServer(char *request) {
      field, so we provide one */ 
   curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "libcurl-agent/1.0");
   
+  /* set verbosity and error message buffer */
+  if (verbosity >= VERB_DEBUG)
+    curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, 1);
+  curl_easy_setopt(curl_handle, CURLOPT_ERRORBUFFER, errorstr);
+  
   /* get it! */ 
-  curl_easy_perform(curl_handle);
+  if (curl_easy_perform(curl_handle) != 0)
+    ERROR("cURL error: %s", errorstr);
   
   /* cleanup curl stuff */ 
   curl_easy_cleanup(curl_handle);
@@ -559,7 +554,7 @@ void * contactServer(char *request) {
 }
 
 char * decryptResponse(char *response, int length, void *bigkey) {
-  MCRYPT blowfish = mcrypt_module_open("blowfish", NULL, "ecb", NULL);
+  MCRYPT blowfish = mcrypt_module_open("blowfish-compat", NULL, "ecb", NULL);
   
   length -= 8;
   
@@ -567,9 +562,7 @@ char * decryptResponse(char *response, int length, void *bigkey) {
   memcpy(result, response+8, length);
   
   mcrypt_generic_init(blowfish, bigkey, 28, NULL);
-  reverseWords(result, length);
   mdecrypt_generic(blowfish, result, length);
-  reverseWords(result, length);
   mcrypt_generic_deinit(blowfish);
   mcrypt_module_close(blowfish);
   
@@ -584,15 +577,61 @@ char * decryptResponse(char *response, int length, void *bigkey) {
   *padding = 0;
   
   if (verbosity >= VERB_DEBUG) {
-    printf("\nDecrypted response:\n");
+    fputs("\nDecrypted response:\n", stderr);
     dumpQuerystring(result);
-    printf("\n");
+    fputs("\n", stderr);
   }
   
   return result;
 }
 
+void keycache_open() {
+  char *home, *keyfilename;
+  
+  if ((home = getenv("HOME")) == NULL) return;
+  keyfilename = malloc(strlen(home) + 20);
+  strcpy(keyfilename, home);
+  strcat(keyfilename, "/.otrkey_cache");
+  keyfile = fopen(keyfilename, "a+");
+  free(keyfilename);
+}
+
+char *keycache_get(const char *fh) {
+  char *cachephrase, *cachefh;
+  static char line[512];
+  
+  if (fh == NULL || keyfile == NULL) return NULL;
+  rewind(keyfile);
+  while (fgets(line, sizeof(line), keyfile) != NULL) {
+    cachefh = strtok(line, " \t\r\n");
+    cachephrase = strtok(NULL, " \t\r\n");
+    if (cachephrase == NULL || cachefh == NULL) continue;
+    if (strcmp(cachefh, fh) == 0) return cachephrase;
+  }
+  if (!feof(keyfile)) PERROR("fgets");
+  return NULL;
+}
+
+void keycache_put(const char *fh, const char *keyphrase) {
+  char *cachephrase, *fn;
+  
+  if (fh == NULL || keyfile == NULL) return;
+  if ((cachephrase = keycache_get(fh)) != NULL) {
+    if (strcmp(keyphrase, cachephrase) != 0)
+      fputs("warning: differing keyphrase was found in cache file!\n", stderr);
+    else
+      fputs("info: keyphrase was already in cache\n", stderr);
+    return;
+  }
+  fn = queryGetParam(header, "FN");
+  if (fprintf(keyfile, "%s\t%s\t# %s\n", fh, keyphrase, fn) < 0)
+    PERROR("fprintf");
+  fflush(keyfile);
+  fputs("info: saved keyphrase to ~/.otrkey_cache\n", stderr);
+}
+
 void fetchKeyphrase() {
+  struct termios ios0, ios1;
   time_t time_ = time(NULL);
   char *date = malloc(9);
   strftime(date, 9, "%Y%m%d", gmtime(&time_));
@@ -605,25 +644,35 @@ void fetchKeyphrase() {
   if (email == NULL) {
     if (!interactive) ERROR("Email address not specified");
     email = malloc(51);
-    printf("Enter your eMail-address: ");
+    fputs("Enter your eMail-address: ", stderr);
     if (scanf("%50s", email) < 1)
       ERROR("Email invalid");
+    while (getchar() != '\n');
   }
   if (password == NULL) {
     if (!interactive) ERROR("Password not specified");
     password = malloc(51);
-    printf("Enter your      password: ");
-    if (scanf("%50s", password) < 1)
+    fputs("Enter your password: ", stderr);
+    tcgetattr(0, &ios0);
+    ios1 = ios0;
+    ios1.c_lflag &= ~ECHO;
+    tcsetattr(0, TCSAFLUSH, &ios1);
+    if (scanf("%50s", password) < 1) {
+      tcsetattr(0, TCSAFLUSH, &ios0);
       ERROR("Password invalid");
+    }
+    tcsetattr(0, TCSAFLUSH, &ios0);
+    while (getchar() != '\n');
+    fputc('\n', stderr);
   }
   
   char *bigkey = generateBigkey(date);
   char *request = generateRequest(bigkey, date);
   
-  printf("Trying to contact server...\n");
+  fputs("Trying to contact server...\n", stderr);
   struct MemoryStruct *response =
       (struct MemoryStruct *)contactServer(request);
-  printf("Server responded.\n");
+  fputs("Server responded.\n", stderr);
   
   // null-terminate response (memory for null-byte _was_ allocated
   // in WriteMemoryCallback, I checked twice :-)
@@ -635,10 +684,10 @@ void fetchKeyphrase() {
   
   if (isBase64(message) == 0) {
     if (memcmp(message,"MessageToBePrintedInDecoder",27) ==0) {
-      printf("Server sent us this sweet message:\n");
+      fputs("Server sent us this sweet message:\n", stderr);
       quote(message + 27);
     } else {
-      printf("Server sent us this ugly crap:\n");
+      fputs("Server sent us this ugly crap:\n", stderr);
       dumpHex(response->memory, response->size);
     }
     ERROR("Server response is unuseable, exiting");
@@ -648,7 +697,7 @@ void fetchKeyphrase() {
   char *info_crypted = base64Decode(message, &info_len);
   
   if (info_len % 8 != 0) {
-    printf("Length of response must be a multiple of 8.");
+    fputs("Length of response must be a multiple of 8.", stderr);
     dumpHex(info_crypted, info_len);
     ERROR("Server response is unuseable, exiting");
   }
@@ -662,11 +711,13 @@ void fetchKeyphrase() {
   if (strlen(keyphrase) != 56)
     ERROR("Keyphrase has wrong length");
   
-  printf("Keyphrase: %s\n", keyphrase);
+  fprintf(stderr, "Keyphrase: %s\n", keyphrase);
+  keycache_put(queryGetParam(header, "FH"), keyphrase);
   
   free(date);
   free(bigkey);
   free(request);
+  free(response->memory);
   free(response);
   free(info_crypted);
 }
@@ -690,9 +741,63 @@ void openFile() {
   header = getHeader();
 }
 
+typedef struct verifyFile_ctx {
+  MD5_CTX ctx;
+  char hash1[16];
+  int input;
+} vfy_t;
+
+void verifyFile_init(vfy_t *vfy, int input) {
+  char *hash_hex, *hash;
+  int i;
+  
+  memset(vfy, 0, sizeof(*vfy));
+  vfy->input = input;
+  
+  /* get MD5 sum from 'OH' or 'FH' header field */
+  hash_hex = queryGetParam(header, vfy->input?"OH":"FH");
+  if (hash_hex == NULL || strlen(hash_hex) != 48)
+    ERROR("Missing hash in file header / unexpected format");
+  for (i=1; i<16; ++i) {
+    hash_hex[2*i] = hash_hex[3*i];
+    hash_hex[2*i+1] = hash_hex[3*i+1];
+  }
+  hash_hex[32] = 0;
+  if (verbosity >= VERB_DEBUG)
+    fprintf(stderr, "Checking %s against MD5 sum: %s\n",
+      vfy->input?"input":"output", hash_hex);
+  hash = hex2bin(hash_hex);
+  memcpy(vfy->hash1, hash, 16);
+  
+  /* calculate MD5 sum of file (without header) */
+  memset(&vfy->ctx, 0, sizeof(vfy->ctx));
+  MD5_Init(&vfy->ctx);
+  
+  free(hash_hex);
+  free(hash);
+}
+
+void verifyFile_data(vfy_t *vfy, char *buffer, size_t len) {
+  MD5_Update(&vfy->ctx, buffer, len);
+}
+
+void verifyFile_final(vfy_t *vfy) {
+  unsigned char md5[16];
+  
+  MD5_Final(md5, &vfy->ctx);
+  if (memcmp(vfy->hash1, md5, 16) != 0) {
+    if (vfy->input)
+      ERROR("Input file had errors. Output may or may not be usable.");
+    else
+      ERROR("Output verification failed. Wrong key?");
+  }
+}
+
 void decryptFile() {
   int fd;
   char *headerFN;
+  struct stat st;
+  FILE *destfile;
   
   if (destfolder != NULL) {
     headerFN = queryGetParam(header, "FN");
@@ -706,35 +811,53 @@ void decryptFile() {
     destfilename = queryGetParam(header, "FN");
   }
   
-  fd = open(destfilename, O_WRONLY|O_CREAT|O_EXCL, CREAT_MODE);
+  if (strcmp(destfilename, "-") == 0) {
+    if (isatty(1)) ERROR("error: cowardly refusing to output to a terminal");
+    fd = 1;
+  }
+  else
+    fd = open(destfilename, O_WRONLY|O_CREAT|O_EXCL, CREAT_MODE);
   if (fd < 0 && errno == EEXIST) {
-    if (!interactive) ERROR("Destination file exists: %s", destfilename);
-    printf("Destination file exists: %s\nType y to overwrite: ", destfilename);
-    if (getchar() != 'y') exit(EXIT_FAILURE);
-    fd = open(destfilename, O_WRONLY|O_CREAT|O_TRUNC, CREAT_MODE);
+    if (stat(destfilename, &st) != 0 || S_ISREG(st.st_mode)) {
+      if (!interactive) ERROR("Destination file exists: %s", destfilename);
+      fprintf(stderr, "Destination file exists: %s\nType y to overwrite: ",
+        destfilename);
+      if (getchar() != 'y') exit(EXIT_FAILURE);
+      while (getchar() != '\n');
+      fd = open(destfilename, O_WRONLY|O_TRUNC, 0);
+    }
+    else
+      fd = open(destfilename, O_WRONLY, 0);
   }
   if (fd < 0)
     PERROR("Error opening destination file: %s", destfilename);
+  if ((destfile = fdopen(fd, "wb")) == NULL)
+    PERROR("fdopen");
   
-  printf("Decrypting...\n"); // ----------------------------------------
+  fputs("Decrypting and verifying...\n", stderr); // -----------------------
   
   void *key = hex2bin(keyphrase);
-  MCRYPT blowfish = mcrypt_module_open("blowfish", NULL, "ecb", NULL);
+  MCRYPT blowfish = mcrypt_module_open("blowfish-compat", NULL, "ecb", NULL);
   mcrypt_generic_init(blowfish, key, 28, NULL);
   
   unsigned long long length = atoll(queryGetParam(header, "SZ")) - 522;
   unsigned long long position = 0;
   unsigned int blocknum;
   size_t readsize;
-  ssize_t writesize;
-  char *buffer = malloc(CHUNK_SIZE);
+  size_t writesize;
+  static char buffer[65536];
   
-  char *progressbar = malloc(41);
+  char progressbar[41];
   const char *rotatingFoo = "|/-\\";
+  vfy_t vfy_in, vfy_out;
   
-  for (blocknum = 0 ; position < length ; blocknum++) {
-    if (length - position >= CHUNK_SIZE) {
-      readsize = fread(buffer, 1, CHUNK_SIZE, file);
+  verifyFile_init(&vfy_in, 1);
+  verifyFile_init(&vfy_out, 0);
+  
+  blocknum = 0;
+  while (position < length) {
+    if (length - position >= sizeof(buffer)) {
+      readsize = fread(buffer, 1, sizeof(buffer), file);
     } else {
       readsize = fread(buffer, 1, length - position, file);
     }
@@ -744,64 +867,70 @@ void decryptFile() {
       PERROR("Error reading input file");
     }
     
-    reverseWords(buffer, CHUNK_SIZE);
-    mdecrypt_generic(blowfish, buffer, CHUNK_SIZE);
-    reverseWords(buffer, CHUNK_SIZE);
+    verifyFile_data(&vfy_in, buffer, readsize);
+    /* If the payload length is not a multiple of eight,
+     * the last few bytes are stored unencrypted */
+    mdecrypt_generic(blowfish, buffer, readsize - readsize % 8);
+    verifyFile_data(&vfy_out, buffer, readsize);
     
-    writesize = write(fd, buffer, readsize);
+    writesize = fwrite(buffer, 1, readsize, destfile);
     if (writesize != readsize)
       PERROR("Error writing to destination file");
     
     position += writesize;
-    if (guimode == 0) {
-      memset(progressbar, ' ', 40);
-      memset(progressbar, '=', (position*40)/length);
-      progressbar[40] = 0;
-      printf("[%s] %3lli%% %c\r", progressbar, (position*100)/length,
-        rotatingFoo[blocknum % 4]);
-    } else {
-      printf("gui> %3lli\n", (position*100)/length);
+    if (position % CHUNK_SIZE == 0) {
+      if (guimode == 0) {
+        memset(progressbar, ' ', 40);
+        memset(progressbar, '=', (position*40)/length);
+        progressbar[40] = 0;
+        fprintf(stderr, "[%s] %3lli%% %c\r", progressbar, (position*100)/length,
+          rotatingFoo[blocknum++ % 4]);
+      } else {
+        fprintf(stderr, "gui> %3lli\n", (position*100)/length);
+      }
+      fflush(stderr);
     }
-    fflush(stdout);
   }
   
   if (guimode == 0) {
-    printf("[========================================] 100%%    \n");
+    fputs("[========================================] 100%    \n", stderr);
   } else {
-    printf("gui> Finished\n");
+    fputs("gui> Finished\n", stderr);
   }
+  
+  verifyFile_final(&vfy_in);
+  verifyFile_final(&vfy_out);
+  fputs("OK checksums from header match\n", stderr);
   
   mcrypt_generic_deinit(blowfish);
   mcrypt_module_close(blowfish);
   
-  if (close(fd) < 0)
+  if (fclose(destfile) != 0)
     PERROR("Error closing destination file.");
   
-  free(progressbar);
   free(key);
-  free(buffer);
 }
 
 void usageError() {
-  printf("\n");
-  printf("Usage: otrtool [-h] [-v] [-i|-f|-x] [-k <keyphrase>] [-e <email> -p <password>]\n");
-  printf("               [-D <destfolder>] [-O <destfile>] <otrkey-file>\n");
-  printf("\n");
-  printf("MODES OF OPERATION\n");
-  printf("  -i | Display information about file (default action)\n");
-  printf("  -f | Fetch keyphrase for file\n");
-  printf("  -x | Decrypt file\n");
-  printf("\n");
-  printf("FREQUENTLY USED ARGUMENTS\n");
-  printf("  -k | Do not fetch keyphrase, use this one\n");
-  printf("  -D | Output folder\n");
-  printf("  -O | Output file (overrides -D)\n");
-  printf("\n");
-  printf("See otrtool(1) for further information\n");
+  fputs("\n"
+    "Usage: otrtool [-h] [-v] [-i|-f|-x] [-k <keyphrase>] [-e <email> -p <password>]\n"
+    "               [-D <destfolder>] [-O <destfile>] <otrkey-file>\n"
+    "\n"
+    "MODES OF OPERATION\n"
+    "  -i | Display information about file (default action)\n"
+    "  -f | Fetch keyphrase for file\n"
+    "  -x | Decrypt file\n"
+    "\n"
+    "FREQUENTLY USED ARGUMENTS\n"
+    "  -k | Do not fetch keyphrase, use this one\n"
+    "  -D | Output folder\n"
+    "  -O | Output file (overrides -D)\n"
+    "\n"
+    "See otrtool(1) for further information\n", stderr);
 }
 
 int main(int argc, char *argv[]) {
-  printf("OTR-Tool, %s\n", VERSION);
+  fputs("OTR-Tool, " VERSION "\n", stderr);
   
   int opt;
   while ( (opt = getopt(argc, argv, "hvgifxk:e:p:D:O:")) != -1) {
@@ -856,7 +985,9 @@ int main(int argc, char *argv[]) {
   
   filename = argv[optind];
   
+  if (!isatty(0)) interactive = 0;
   openFile();
+  keycache_open();
   
   switch (action) {
     case ACTION_INFO:
@@ -867,20 +998,25 @@ int main(int argc, char *argv[]) {
       fetchKeyphrase();
       break;
     case ACTION_DECRYPT:
-      if (keyphrase == NULL)
-        fetchKeyphrase();
+      if (keyphrase == NULL) {
+        keyphrase = keycache_get(queryGetParam(header, "FH"));
+        if (keyphrase)
+          fprintf(stderr, "Keyphrase from cache: %s\n", keyphrase);
+        else
+          fetchKeyphrase();
+      }
       
       errno = 0;
       nice(10);
       if (errno == 0 && verbosity >= VERB_DEBUG)
-        printf("NICE was set to 10\n");
+        fputs("NICE was set to 10\n", stderr);
       
       // I am not sure if this really catches all errors
       // If this causes problems, just delete the ionice-stuff
       #ifdef __NR_ioprio_set
         if (syscall(__NR_ioprio_set, 1, getpid(), 7 | 3 << 13) == 0
              && verbosity >= VERB_DEBUG)
-          printf("IONICE class was set to Idle\n");
+          fputs("IONICE class was set to Idle\n", stderr);
       #endif
       
       decryptFile();

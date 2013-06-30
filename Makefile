@@ -16,7 +16,7 @@ DVERSION = v1.0.2
 VERSION := $(shell git describe --long --dirty 2>/dev/null || echo "$(DVERSION)")
 
 CC = gcc
-CFLAGS = -Wall -g -DVERSION='"$(VERSION)"'
+CFLAGS = -O3 -Wall -Wextra -g -DVERSION='"$(VERSION)"'
 LDFLAGS = -lmcrypt -lcurl
 
 # large file support
