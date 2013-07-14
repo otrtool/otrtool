@@ -1,0 +1,3 @@
+src/*.o
+otrtool
+otrtool.1.gz
