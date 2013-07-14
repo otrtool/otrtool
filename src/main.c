@@ -35,7 +35,6 @@
 #endif
 
 #define LINE_LENGTH 80
-#define CHUNK_SIZE  2097152    // 2M, must be multiple of 8
 #define MAX_RESPONSE_LENGTH 1000
 #define CREAT_MODE S_IWUSR|S_IRUSR|S_IRGRP|S_IROTH
 
@@ -878,7 +877,7 @@ void decryptFile() {
       PERROR("Error writing to destination file");
     
     position += writesize;
-    if (position % CHUNK_SIZE == 0) {
+    if (position % 2097152 == 0) {
       if (guimode == 0) {
         memset(progressbar, ' ', 40);
         memset(progressbar, '=', (position*40)/length);
