@@ -13,7 +13,7 @@ SHELL = /bin/sh
 .SUFFIXES: .c .o
 
 DVERSION = v1.0.2
-VERSION := $(shell git describe --long --dirty 2>/dev/null || echo "$(DVERSION)")
+VERSION := $(shell git describe --tags --long --dirty 2>/dev/null || echo "$(DVERSION)")
 
 CC = gcc
 CFLAGS = -O3 -Wall -Wextra -g -DVERSION='"$(VERSION)"'
@@ -28,14 +28,13 @@ MAIN = otrtool
 
 OBJS = $(SRCS:.c=.o)
 
-.PHONY: depend clean doc
+.PHONY: depend clean
 
-all:    $(MAIN) doc
+all:    $(MAIN) otrtool.1.gz
 	@echo Done.
 
-doc:
+otrtool.1.gz:
 	gzip -c doc/otrtool.1 > otrtool.1.gz
-	@echo Manpage was gzipped successfully
 
 $(MAIN): $(OBJS)
 	$(CC) $(CFLAGS) -o $(MAIN) $(OBJS) $(LDFLAGS)
