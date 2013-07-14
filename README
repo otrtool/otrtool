@@ -46,7 +46,7 @@ In April, 2010, eddy14 reverse-engineered the otrkey-file-format and OTRs
 Client-Server-protocol. The blog post describing his work (german):
     http://41yd.de/blog/2010/04/18/otrkey-breaker/
 He also wrote a proof-of-concept tool to decrypt OTRKEYs. I rewrote it in
-proper C and without licensing issues.
+C and without licensing issues.
 
 == LICENSE ==
 
