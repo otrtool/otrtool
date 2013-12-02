@@ -23,6 +23,9 @@ LDFLAGS = -lmcrypt -lcurl
 CFLAGS += $(shell getconf LFS_CFLAGS)
 LDFLAGS += $(shell getconf LFS_LDFLAGS)
 
+# osx paths for macports dependencies
+CFLAGS += -I/opt/local/include -L/opt/local/lib
+
 SRCS = src/md5.c src/main.c
 MAIN = otrtool
 
