@@ -11,6 +11,7 @@
 SHELL = /bin/sh
 .SUFFIXES:
 .SUFFIXES: .c .o
+PREFIX = /usr/local
 
 DVERSION = v1.1.0
 VERSION := $(shell git describe --tags --long --dirty 2>/dev/null || echo "$(DVERSION)")
@@ -28,7 +29,7 @@ MAIN = otrtool
 
 OBJS = $(SRCS:.c=.o)
 
-.PHONY: depend clean
+.PHONY: depend clean install
 
 all:    $(MAIN) otrtool.1.gz
 	@echo Done.
@@ -49,6 +50,10 @@ $(MAIN): $(OBJS)
 
 clean:
 	$(RM) $(OBJS) $(MAIN) $(MAIN).1.gz
+
+install: $(MAIN) $(MAIN).1.gz
+	install -m 0755 $(MAIN) $(PREFIX)/bin
+	install -m 0644 $(MAIN).1.gz $(PREFIX)/share/man/man1
 
 depend: $(SRCS)
 	makedepend -w70 -Y $^
