@@ -366,8 +366,10 @@ void dumpHex(void *data_, int len) {
 
 char * getHeader() {
   unsigned char *header = malloc(sizeof(char) * 513);
-  if (fread(header, 512, 1, file) < 1)
+  if (fread(header, 512, 1, file) < 1 && !feof(file))
     PERROR("Error reading file");
+  if (feof(file))
+    ERROR("Error: unexpected end of file");
   MCRYPT blowfish;
   blowfish = mcrypt_module_open("blowfish-compat", NULL, "ecb", NULL);
   unsigned char hardKey[] = {
@@ -733,10 +735,11 @@ void openFile() {
   if (file == NULL)
     PERROR("Error opening file");
   
-  char magic[11];
-  magic[10] = 0;
-  if (fread(magic, 10, 1, file) < 1)
+  char magic[11] = { 0 };
+  if (fread(magic, 10, 1, file) < 1 && !feof(file))
     PERROR("Error reading file");
+  if (feof(file))
+    ERROR("Error: unexpected end of file");
   if (strcmp(magic, "OTRKEYFILE") != 0)
     ERROR("Wrong file format");
   
