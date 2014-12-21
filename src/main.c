@@ -519,9 +519,9 @@ void * contactServer(char *request) {
   /* we pass our 'chunk' struct to the callback function */ 
   curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *)chunk);
   
-  /* some servers don't like requests that are made without a user-agent
-     field, so we provide one */ 
-  curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "libcurl-agent/1.0");
+  /* imitate the original OTR client */ 
+  curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "Linux-OTR-Decoder/0.4.592");
+  curl_easy_setopt(curl_handle, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
   
   /* set verbosity and error message buffer */
   if (verbosity >= VERB_DEBUG)
