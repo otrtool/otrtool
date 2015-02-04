@@ -676,6 +676,10 @@ void fetchKeyphrase() {
   fputs("Trying to contact server...\n", stderr);
   struct MemoryStruct *response =
       (struct MemoryStruct *)contactServer(request);
+
+  if (response->memory == NULL || response->size == 0) {    // Check whether a response was received, otherwise SEGFAULT occurs
+    ERROR("Server sent an empty response, exiting");
+  }
   fputs("Server responded.\n", stderr);
   
   // null-terminate response (memory for null-byte _was_ allocated
