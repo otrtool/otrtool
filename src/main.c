@@ -76,6 +76,7 @@ static size_t WriteMemoryCallback(void *ptr, size_t size,
           size_t nmemb, void *data) {
   size_t realsize = size * nmemb;
   struct MemoryStruct *mem = (struct MemoryStruct *)data;
+  char *newmem;
   
   // abort very long transfers
   if (mem->size + realsize > MAX_RESPONSE_LENGTH) {
@@ -83,14 +84,14 @@ static size_t WriteMemoryCallback(void *ptr, size_t size,
         ? MAX_RESPONSE_LENGTH - mem->size
         : 0;
   }
+  if (realsize < 1) return 0;
   
-  // the following line allocates one byte more than needed to allow
-  // for easy conversion to a null-terminated string
-  mem->memory = realloc(mem->memory, mem->size + realsize + 1);
-  if (mem->memory) {
+  // "If realloc() fails the original block is left untouched" (man 3 realloc)
+  newmem = realloc(mem->memory, mem->size + realsize);
+  if (newmem != NULL) {
+    mem->memory = newmem;
     memcpy(&(mem->memory[mem->size]), ptr, realsize);
     mem->size += realsize;
-    mem->memory[mem->size] = 0;
   } else return 0;
   return realsize;
 }
@@ -501,7 +502,7 @@ char * generateRequest(void *bigkey, char *date) {
   return result;
 }
 
-void * contactServer(char *request) {
+struct MemoryStruct * contactServer(char *request) {
   // http://curl.haxx.se/libcurl/c/getinmemory.html
   CURL *curl_handle;
   char errorstr[CURL_ERROR_SIZE];
@@ -554,7 +555,11 @@ void * contactServer(char *request) {
   /* we're done with libcurl, so clean it up */ 
   curl_global_cleanup();
   
-  return (void *)chunk;
+  // null-terminate response
+  chunk->memory = realloc(chunk->memory, chunk->size + 1);
+  if (chunk->memory == NULL) PERROR("realloc");
+  chunk->memory[chunk->size] = 0;
+  return chunk;
 }
 
 char * decryptResponse(char *response, int length, void *bigkey) {
@@ -674,18 +679,13 @@ void fetchKeyphrase() {
   char *request = generateRequest(bigkey, date);
   
   fputs("Trying to contact server...\n", stderr);
-  struct MemoryStruct *response =
-      (struct MemoryStruct *)contactServer(request);
+  struct MemoryStruct *response = contactServer(request);
 
-  if (response->memory == NULL || response->size == 0) {    // Check whether a response was received, otherwise SEGFAULT occurs
+  if (response->size == 0 || response->memory == NULL) {
     ERROR("Server sent an empty response, exiting");
   }
   fputs("Server responded.\n", stderr);
   
-  // null-terminate response (memory for null-byte _was_ allocated
-  // in WriteMemoryCallback, I checked twice :-)
-  response->memory[response->size] = 0;
-
   // skip initial whitespace
   char *message = response->memory;
   message += strspn(message, " \t\n");
