@@ -1,57 +1,59 @@
 eddy41
-	Hat das OTRKEY-Format reverse engineered und einen einfachen Decryper dafür
-	geschrieben. Diese Software ist eine Reimplementierung davon. Den originalen
-	(und extrem lesenswerten Blogeintrag) findet man (In gespiegelter Form) hier:
-	http://pyropeter.eu/41yd.de/blog/2010/04/18/otrkey-breaker/
-	(Falls der Link irgendwann kaputtgehen sollte, waere eine Mail an PyroPeter
-	wahrscheinlich zielführend)
+  Hat das OTRKEY-Format reverse engineered und einen einfachen Decryper dafür
+  geschrieben. Diese Software ist eine Reimplementierung davon. Der originale
+  (und extrem lesenswerte Blogeintrag) ist in der Datei README, Abschnitt
+  HISTORY, verlinkt.
+
+
+PyroPeter
+  Hauptautor von otrtool, betrieb die Pflege bis einschließlich v1.1.0
 
 
 roadman17 aus dem ip-phone-forum
-	Zitat von http://www.ip-phone-forum.de/showthread.php?p=1616703 :
+  Zitat von http://www.ip-phone-forum.de/showthread.php?p=1616703 :
 
-	> Ich habe mal otrtool von
-	> http://github.com/pyropeter/otrtool
-	> getestet. Da ich keine Lust hatte OpenSSL zu kompilieren, habe ich das
-	> Programm zu Testzwecken so modifiziert, dass es nur noch mcrypt benötigt,
-	> aber dafür den Key vom Server nicht mehr holen kann. Deswegen musste ich
-	> den Key mitgeben. Vielleicht baue ich die Keyabfrage als Shellscript nach,
-	> aber ich denke ich warte einfach bis der Autor die OpenSSL-Abhängigkeit
-	> entfernt hat, da das sowieso nur eine Spielerei ist.
-	> 
-	> time ./otrtool -x -k <Key> <184 MB Große otrkey-Datei>
-	> OTR-Tool, v0.5-0-g1c8a465
-	> Decrypting...
-	> [========================================] 100% 
-	> real 3m 8.98s
-	> user 1m 36.44s
-	> sys 0m 40.72s
-	> 
-	> Das sind die Zeiten auf der FritzBox 7270v1.
+  > Ich habe mal otrtool von
+  > http://github.com/pyropeter/otrtool
+  > getestet. Da ich keine Lust hatte OpenSSL zu kompilieren, habe ich das
+  > Programm zu Testzwecken so modifiziert, dass es nur noch mcrypt benötigt,
+  > aber dafür den Key vom Server nicht mehr holen kann. Deswegen musste ich
+  > den Key mitgeben. Vielleicht baue ich die Keyabfrage als Shellscript nach,
+  > aber ich denke ich warte einfach bis der Autor die OpenSSL-Abhängigkeit
+  > entfernt hat, da das sowieso nur eine Spielerei ist.
+  >
+  > time ./otrtool -x -k <Key> <184 MB Große otrkey-Datei>
+  > OTR-Tool, v0.5-0-g1c8a465
+  > Decrypting...
+  > [========================================] 100%
+  > real 3m 8.98s
+  > user 1m 36.44s
+  > sys 0m 40.72s
+  >
+  > Das sind die Zeiten auf der FritzBox 7270v1.
 
-	roadman17 hat otrtool für eine FritzBox kompiliert und dort erfolgreich
-	verwendet. Sein Forenpost war für PyroPeter das erste Anzeichen dafür, dass
-	überhaupt irgendjemand diese Software einsetzt und hat damit verhindert,
-	dass dieses Projekt in der Tonne landet.
-	(Die OpenSSL-Abhängigkeit wurde übrigens entfernt ;-)
+  roadman17 hat otrtool für eine FritzBox kompiliert und dort erfolgreich
+  verwendet. Sein Forenpost war für PyroPeter das erste Anzeichen dafür, dass
+  überhaupt irgendjemand diese Software einsetzt und hat damit verhindert,
+  dass dieses Projekt in der Tonne landet.
+  (Die OpenSSL-Abhängigkeit wurde übrigens entfernt ;-)
 
 
 Least Significant <least@nxdomain.dyndns.org>
-	Hat Patches eingesendet, die das Kompilieren und die Entschlüsselung von
-	Dateien größer 2GB auf i686-Systemen erlauben.
+  Hat Patches eingesendet, die das Kompilieren und die Entschlüsselung von
+  Dateien größer 2GB auf i686-Systemen erlauben.
 
 
 jester
-	Hat einen Patch eingesendet, der (u.a.) Passphrase-Caching implementiert
-	hat. Leider hat PyroPeter durch eine Mischung aus Zeitmangel und
-	Schusseligkeit den Patch nie gemerged und erst wiederentdeckt, als er
-	eshrdlus Änderungen gemerged hat, die diesen Patch überflüssig machen.
-	Sorry :-(
+  Hat einen Patch eingesendet, der (u.a.) Passphrase-Caching implementiert
+  hat. Leider hat PyroPeter durch eine Mischung aus Zeitmangel und
+  Schusseligkeit den Patch nie gemerged und erst wiederentdeckt, als er
+  eshrdlus Änderungen gemerged hat, die diesen Patch überflüssig machen.
+  Sorry :-(
 
 
 eshrdlu
-	* Verschiedene Bugfixes (u.a. für eine Sicherheitslücke)
-	* Checksummenprüfung
-	* Passphrase-Caching
-	* Support für Entschlüsselung in eine Pipe
+  * Verschiedene Bugfixes (u.a. für eine Sicherheitslücke)
+  * Checksummenprüfung
+  * Passphrase-Caching
+  * Support für Entschlüsselung in eine Pipe
 
