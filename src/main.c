@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <strings.h>
+#include <stdint.h>
 #include <unistd.h>
 #include <termios.h>
 #include <sys/stat.h>
@@ -246,7 +246,7 @@ void * base64Decode(char *text, int *outlen) {
       ? 2 : (text[inlen-1] == '=' ? 1 : 0));
   char *result = malloc(blocks * 3);
   char *resptr = result;
-  u_int8_t *text_ = (u_int8_t*)text;
+  uint8_t *text_ = (uint8_t*)text;
   int i;
   
   for (i = 0 ; i < blocks ; i++) {
@@ -270,7 +270,7 @@ abcdefghijklmnopqrstuvwxyz\
 }
 
 char * queryGetParam(char *query, char *name) {
-  char *begin = index(query, '&');
+  char *begin = strchr(query, '&');
   char *end;
   int nameLen = strlen(name);
   
@@ -278,7 +278,7 @@ char * queryGetParam(char *query, char *name) {
     begin++;
     if (strncmp(begin, name, nameLen) == 0 && begin[nameLen] == '=') {
       begin += nameLen + 1;
-      end = index(begin, '&');
+      end = strchr(begin, '&');
       if (end == NULL)
         end = begin + strlen(begin);
       char *result = malloc(end - begin + 1);
@@ -286,7 +286,7 @@ char * queryGetParam(char *query, char *name) {
       result[end - begin] = 0;
       return result;
     }
-    begin = index(begin, '&');
+    begin = strchr(begin, '&');
   }
   return NULL;
 }
