@@ -969,7 +969,7 @@ void usageError() {
 int main(int argc, char *argv[]) {
   fputs("OTR-Tool, " VERSION "\n", stderr);
   
-  int opt;
+  int opt, storeKeyphrase;
   while ( (opt = getopt(argc, argv, "hvgifxyk:e:p:D:O:")) != -1) {
     switch (opt) {
       case 'h':
@@ -1038,7 +1038,9 @@ int main(int argc, char *argv[]) {
       fetchKeyphrase();
       break;
     case ACTION_DECRYPT:
+      storeKeyphrase = 1;
       if (keyphrase == NULL) {
+        storeKeyphrase = 0;
         keyphrase = keycache_get(queryGetParam(header, "FH"));
         if (keyphrase)
           fprintf(stderr, "Keyphrase from cache: %s\n", keyphrase);
@@ -1060,6 +1062,8 @@ int main(int argc, char *argv[]) {
       #endif
       
       decryptFile();
+      if(storeKeyphrase)
+          keycache_put(queryGetParam(header, "FH"), keyphrase);
       break;
     case ACTION_VERIFY:
       verifyOnly();
