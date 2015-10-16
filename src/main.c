@@ -1062,8 +1062,8 @@ int main(int argc, char *argv[]) {
       #endif
       
       decryptFile();
-      if(storeKeyphrase)
-          keycache_put(queryGetParam(header, "FH"), keyphrase);
+      if (storeKeyphrase)
+        keycache_put(queryGetParam(header, "FH"), keyphrase);
       break;
     case ACTION_VERIFY:
       verifyOnly();
