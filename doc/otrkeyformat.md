@@ -18,8 +18,7 @@ few bytes are stored unencrypted.
 
 Note that both header and payload are encrypted with incorrect endianness,
 so that you have to reverse byte order in 32-bit words before and after
-decryption. (Or you can just use the "blowfish-compat" encryption in
-libmcrypt.)
+decryption. (Or you can just use the "blowfish-compat" cipher in libmcrypt.)
 
 
 Header format
