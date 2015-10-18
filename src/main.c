@@ -40,24 +40,41 @@
 #define MAX_RESPONSE_LENGTH 1000
 #define CREAT_MODE S_IWUSR|S_IRUSR|S_IRGRP|S_IROTH
 
-static int guimode = 0; // do not output \r and stuff
-static int interactive = 1; // ask questions instead of exiting
-
 #define VERB_INFO  1
 #define VERB_DEBUG 2
-static int verbosity = VERB_INFO;
 
 #define ACTION_INFO       1
 #define ACTION_FETCHKEY   2
 #define ACTION_DECRYPT    3
 #define ACTION_VERIFY     4
-static int action = ACTION_INFO;
 
+/* global options as supplied by the user via command-line etc. */
+struct otrtool_options {
+  int action;
+  int verbosity;
+  int guimode; // do not output \r and stuff
+  char *email;
+  char *password;
+  char *keyphrase;
+  char *destdir;
+  char *destfile;
+};
+static struct otrtool_options opts = {
+  .action = ACTION_INFO,
+  .verbosity = VERB_INFO,
+  .guimode = 0,
+  .email = NULL,
+  .password = NULL,
+  .keyphrase = NULL,
+  .destdir = NULL,
+  .destfile = NULL,
+};
+
+static int interactive = 1; // ask questions instead of exiting
 static char *email = NULL;
 static char *password = NULL;
 static char *keyphrase = NULL;
 static char *filename = NULL;
-static char *destfolder = NULL;
 static char *destfilename = NULL;
 
 static FILE *file = NULL;
@@ -389,7 +406,7 @@ char * getHeader() {
     ERROR("Corrupted header: could not find padding");
   *padding = 0;
   
-  if (verbosity >= VERB_DEBUG) {
+  if (opts.verbosity >= VERB_DEBUG) {
     fputs("\nDumping decrypted header:\n", stderr);
     dumpQuerystring((char*)header);
     fputs("\n", stderr);
@@ -430,7 +447,7 @@ void * generateBigkey(char *date) {
   
   *ptr = 0;
   
-  if (verbosity >= VERB_DEBUG) {
+  if (opts.verbosity >= VERB_DEBUG) {
     fprintf(stderr, "\nGenerated BigKey: %s\n\n", bigkey_hex);
   }
   
@@ -443,7 +460,7 @@ void * generateBigkey(char *date) {
 }
 
 char * generateRequest(void *bigkey, char *date) {
-  char *filename = queryGetParam(header, "FN");
+  char *headerFN = queryGetParam(header, "FN");
   char *thatohthing = queryGetParam(header, "OH");
   MCRYPT blowfish = mcrypt_module_open("blowfish-compat", NULL, "cbc", NULL);
   char *iv = malloc(mcrypt_enc_get_iv_size(blowfish));
@@ -466,9 +483,9 @@ char * generateRequest(void *bigkey, char *date) {
 &OH=%s\
 &A=%s\
 &P=%s\
-&D=%s", filename, thatohthing, email, password, dump);
+&D=%s", headerFN, thatohthing, email, password, dump);
   
-  if (verbosity >= VERB_DEBUG) {
+  if (opts.verbosity >= VERB_DEBUG) {
     fputs("\nGenerated request-'code':\n", stderr);
     dumpQuerystring(code);
     fputs("\n", stderr);
@@ -479,7 +496,7 @@ char * generateRequest(void *bigkey, char *date) {
   mcrypt_generic_deinit(blowfish);
   mcrypt_module_close(blowfish);
   
-  if (verbosity >= VERB_DEBUG) {
+  if (opts.verbosity >= VERB_DEBUG) {
     fputs("\nEncrypted request-'code':\n", stderr);
     dumpHex(code, 512);
     fputs("\n", stderr);
@@ -490,14 +507,14 @@ char * generateRequest(void *bigkey, char *date) {
 &AA=%s\
 &ZZ=%s", base64Encode(code, 512), email, date);
   
-  if (verbosity >= VERB_DEBUG) {
+  if (opts.verbosity >= VERB_DEBUG) {
     fprintf(stderr, "\nRequest:\n%s\n\n", result);
   }
   
   free(code);
   free(dump);
   free(iv);
-  free(filename);
+  free(headerFN);
   free(thatohthing);
   return result;
 }
@@ -530,7 +547,7 @@ struct MemoryStruct * contactServer(char *request) {
   curl_easy_setopt(curl_handle, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
   
   /* set verbosity and error message buffer */
-  if (verbosity >= VERB_DEBUG)
+  if (opts.verbosity >= VERB_DEBUG)
     curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, 1);
   curl_easy_setopt(curl_handle, CURLOPT_ERRORBUFFER, errorstr);
   
@@ -585,7 +602,7 @@ char * decryptResponse(char *response, int length, void *bigkey) {
     ERROR("Corrupted response: could not find padding");
   *padding = 0;
   
-  if (verbosity >= VERB_DEBUG) {
+  if (opts.verbosity >= VERB_DEBUG) {
     fputs("\nDecrypted response:\n", stderr);
     dumpQuerystring(result);
     fputs("\n", stderr);
@@ -650,23 +667,25 @@ void fetchKeyphrase() {
     info = NULL;
   }
   
-  if (email == NULL) {
+  if (opts.email == NULL) {
     if (!interactive) ERROR("Email address not specified");
-    email = malloc(51);
+    opts.email = malloc(51);
     fputs("Enter your eMail-address: ", stderr);
-    if (scanf("%50s", email) < 1)
+    if (scanf("%50s", opts.email) < 1)
       ERROR("Email invalid");
     while (getchar() != '\n');
   }
-  if (password == NULL) {
+  email = strdup(opts.email);
+
+  if (opts.password == NULL) {
     if (!interactive) ERROR("Password not specified");
-    password = malloc(51);
+    opts.password = malloc(51);
     fputs("Enter your password: ", stderr);
     tcgetattr(0, &ios0);
     ios1 = ios0;
     ios1.c_lflag &= ~ECHO;
     tcsetattr(0, TCSAFLUSH, &ios1);
-    if (scanf("%50s", password) < 1) {
+    if (scanf("%50s", opts.password) < 1) {
       tcsetattr(0, TCSAFLUSH, &ios0);
       ERROR("Password invalid");
     }
@@ -674,9 +693,12 @@ void fetchKeyphrase() {
     while (getchar() != '\n');
     fputc('\n', stderr);
   }
+  password = strdup(opts.password);
   
   char *bigkey = generateBigkey(date);
   char *request = generateRequest(bigkey, date);
+  free(email);
+  free(password);
   
   fputs("Trying to contact server...\n", stderr);
   struct MemoryStruct *response = contactServer(request);
@@ -772,7 +794,7 @@ void verifyFile_init(vfy_t *vfy, int input) {
     hash_hex[2*i+1] = hash_hex[3*i+1];
   }
   hash_hex[32] = 0;
-  if (verbosity >= VERB_DEBUG)
+  if (opts.verbosity >= VERB_DEBUG)
     fprintf(stderr, "Checking %s against MD5 sum: %s\n",
       vfy->input?"input":"output", hash_hex);
   hash = hex2bin(hash_hex);
@@ -833,17 +855,22 @@ void decryptFile() {
   char *headerFN;
   struct stat st;
   FILE *destfile;
-  
-  if (destfolder != NULL) {
+
+  if (opts.destfile == NULL) {
     headerFN = queryGetParam(header, "FN");
-    destfilename = malloc(strlen(destfolder) + strlen(headerFN) + 2);
-    strcpy(destfilename, destfolder);
-    destfilename[strlen(destfolder)] = '/';
-    strcpy(destfilename + strlen(destfolder) + 1, headerFN);
+    if (opts.destdir != NULL) {
+      destfilename = malloc(strlen(opts.destdir) + strlen(headerFN) + 2);
+      strcpy(destfilename, opts.destdir);
+      strcat(destfilename, "/");
+      strcat(destfilename, headerFN);
+      free(headerFN);
+    }
+    else {
+      destfilename = headerFN;
+    }
   }
-  
-  if (destfilename == NULL) {
-    destfilename = queryGetParam(header, "FN");
+  else {
+    destfilename = strdup(opts.destfile);
   }
   
   if (strcmp(destfilename, "-") == 0) {
@@ -869,6 +896,8 @@ void decryptFile() {
   if ((destfile = fdopen(fd, "wb")) == NULL)
     PERROR("fdopen");
   
+  free(destfilename);
+
   fputs("Decrypting and verifying...\n", stderr); // -----------------------
   
   void *key = hex2bin(keyphrase);
@@ -914,7 +943,7 @@ void decryptFile() {
     
     position += writesize;
     if (position % 2097152 == 0) {
-      if (guimode == 0) {
+      if (opts.guimode == 0) {
         memset(progressbar, ' ', 40);
         memset(progressbar, '=', (position*40)/length);
         progressbar[40] = 0;
@@ -927,7 +956,7 @@ void decryptFile() {
     }
   }
   
-  if (guimode == 0) {
+  if (opts.guimode == 0) {
     fputs("[========================================] 100%    \n", stderr);
   } else {
     fputs("gui> Finished\n", stderr);
@@ -977,39 +1006,38 @@ int main(int argc, char *argv[]) {
         exit(EXIT_SUCCESS);
         break;
       case 'v':
-        verbosity = VERB_DEBUG;
+        opts.verbosity = VERB_DEBUG;
         break;
       case 'g':
-        guimode = 1;
+        opts.guimode = 1;
         interactive = 0;
         break;
       case 'i':
-        action = ACTION_INFO;
+        opts.action = ACTION_INFO;
         break;
       case 'f':
-        action = ACTION_FETCHKEY;
+        opts.action = ACTION_FETCHKEY;
         break;
       case 'x':
-        action = ACTION_DECRYPT;
+        opts.action = ACTION_DECRYPT;
         break;
       case 'y':
-        action = ACTION_VERIFY;
+        opts.action = ACTION_VERIFY;
         break;
       case 'k':
-        keyphrase = optarg;
+        opts.keyphrase = optarg;
         break;
       case 'e':
-        email = optarg;
+        opts.email = optarg;
         break;
       case 'p':
-        password = optarg;
+        opts.password = optarg;
         break;
       case 'D':
-        destfolder = optarg;
+        opts.destdir = optarg;
         break;
       case 'O':
-        destfilename = malloc(strlen(optarg) + 1);
-        strcpy(destfilename, optarg);
+        opts.destfile = optarg;
         break;
       default:
         usageError();
@@ -1029,7 +1057,7 @@ int main(int argc, char *argv[]) {
   openFile();
   keycache_open();
   
-  switch (action) {
+  switch (opts.action) {
     case ACTION_INFO:
       // TODO: output something nicer than just the querystring
       dumpQuerystring(header);
@@ -1039,7 +1067,7 @@ int main(int argc, char *argv[]) {
       break;
     case ACTION_DECRYPT:
       storeKeyphrase = 1;
-      if (keyphrase == NULL) {
+      if (opts.keyphrase == NULL) {
         storeKeyphrase = 0;
         keyphrase = keycache_get(queryGetParam(header, "FH"));
         if (keyphrase)
@@ -1047,17 +1075,20 @@ int main(int argc, char *argv[]) {
         else
           fetchKeyphrase();
       }
+      else {
+        keyphrase = strdup(opts.keyphrase);
+      }
       
       errno = 0;
       nice(10);
-      if (errno == 0 && verbosity >= VERB_DEBUG)
+      if (errno == 0 && opts.verbosity >= VERB_DEBUG)
         fputs("NICE was set to 10\n", stderr);
       
       // I am not sure if this really catches all errors
       // If this causes problems, just delete the ionice-stuff
       #ifdef __NR_ioprio_set
         if (syscall(__NR_ioprio_set, 1, getpid(), 7 | 3 << 13) == 0
-             && verbosity >= VERB_DEBUG)
+             && opts.verbosity >= VERB_DEBUG)
           fputs("IONICE class was set to Idle\n", stderr);
       #endif
       
