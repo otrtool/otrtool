@@ -23,6 +23,7 @@ otrtool \- decrypts otrkeys from onlinetvrecorder.com
 .br
 .B otrtool
 .B \-x
+.RB [\| \-u \|]
 .RB [\| \-e
 .IR email \|]
 .RB [\| \-p
@@ -119,6 +120,13 @@ Save decrypted file to
 This overrides
 .B -D
 
+.TP
+.BI \-u
+Delete (unlink)
+.I otrkey-files
+after successful decryption.
+This option is only applied if both input and output are regular files.
+
 
 .\" ********************************************************************
 .SS "Fetch options"
@@ -134,6 +142,31 @@ as e-mail address
 Authenticate using
 .I password
 as password
+
+
+.\" ********************************************************************
+.\" ********************************************************************
+.SH "EXAMPLES"
+
+Decrypt a single otrkey file.
+If you have not decrypted that file before, you will be asked for your
+username and password:
+.PP
+.nf
+.RS
+.B otrtool \-x \fRsomefile.otrkey
+.RE
+.fi
+
+.PP
+Decrypt several otrkey files in your "Downloads" directory and delete each of
+them afterwards. Output files will be stored in your "Movies" directory:
+.PP
+.nf
+.RS
+.B otrtool \-x \-u \-D \fRMovies Downloads/*.otrkey
+.RE
+.fi
 
 
 .\" ********************************************************************

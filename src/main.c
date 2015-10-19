@@ -53,6 +53,7 @@ struct otrtool_options {
   int action;
   int verbosity;
   int guimode; // do not output \r and stuff
+  int unlinkmode;
   char *email;
   char *password;
   char *keyphrase;
@@ -63,6 +64,7 @@ static struct otrtool_options opts = {
   .action = ACTION_INFO,
   .verbosity = VERB_INFO,
   .guimode = 0,
+  .unlinkmode = 0,
   .email = NULL,
   .password = NULL,
   .keyphrase = NULL,
@@ -896,8 +898,6 @@ void decryptFile() {
   if ((destfile = fdopen(fd, "wb")) == NULL)
     PERROR("fdopen");
   
-  free(destfilename);
-
   fputs("Decrypting and verifying...\n", stderr); // -----------------------
   
   void *key = hex2bin(keyphrase);
@@ -971,8 +971,25 @@ void decryptFile() {
   
   if (fclose(destfile) != 0)
     PERROR("Error closing destination file.");
+
+  if (opts.unlinkmode) {
+    if (strcmp(filename, "-") != 0 &&
+        stat(filename, &st) == 0 && S_ISREG(st.st_mode) &&
+        strcmp(destfilename, "-") != 0 &&
+        stat(destfilename, &st) == 0 && S_ISREG(st.st_mode)) {
+      if (unlink(filename) != 0)
+        PERROR("Cannot delete input file");
+      else
+        fputs("info: input file has been deleted\n", stderr);
+    }
+    else {
+      fputs("Warning: Not deleting input file (input or "
+          "output is not a regular file)\n", stderr);
+    }
+  }
   
   free(key);
+  free(destfilename);
 }
 
 void processFile() {
@@ -1010,8 +1027,9 @@ void processFile() {
 
 void usageError() {
   fputs("\n"
-    "Usage: otrtool [-h] [-v] [-i|-f|-x|-y] [-k <keyphrase>] [-e <email>]\n"
-    "               [-p <password>] [-D <destfolder>] [-O <destfile>]\n"
+    "Usage: otrtool [-h] [-v] [-i|-f|-x|-y] [-u]\n"
+    "               [-k <keyphrase>] [-e <email>] [-p <password>]\n"
+    "               [-D <destfolder>] [-O <destfile>]\n"
     "               <otrkey-file1> [<otrkey-file2> ... [<otrkey-fileN>]]\n"
     "\n"
     "MODES OF OPERATION\n"
@@ -1020,10 +1038,11 @@ void usageError() {
     "  -x | Decrypt file\n"
     "  -y | Verify only\n"
     "\n"
-    "FREQUENTLY USED ARGUMENTS\n"
+    "FREQUENTLY USED OPTIONS\n"
     "  -k | Do not fetch keyphrase, use this one\n"
     "  -D | Output folder\n"
     "  -O | Output file (overrides -D)\n"
+    "  -u | Delete otrkey-files after successful decryption\n"
     "\n"
     "See otrtool(1) for further information\n", stderr);
 }
@@ -1033,7 +1052,7 @@ int main(int argc, char *argv[]) {
 
   int i;
   int opt;
-  while ( (opt = getopt(argc, argv, "hvgifxyk:e:p:D:O:")) != -1) {
+  while ( (opt = getopt(argc, argv, "hvgifxyk:e:p:D:O:u")) != -1) {
     switch (opt) {
       case 'h':
         usageError();
@@ -1072,6 +1091,9 @@ int main(int argc, char *argv[]) {
         break;
       case 'O':
         opts.destfile = optarg;
+        break;
+      case 'u':
+        opts.unlinkmode = 1;
         break;
       default:
         usageError();

@@ -8,3 +8,5 @@
 * twittelevision
 * pretty formatting for -i
 * Valgrind-cleanliness
+* store header information in a struct rather than calling
+  queryGetParam() in various places
