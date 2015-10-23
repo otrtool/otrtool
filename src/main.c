@@ -975,11 +975,44 @@ void decryptFile() {
   free(key);
 }
 
+void processFile() {
+  int storeKeyphrase;
+  switch (opts.action) {
+    case ACTION_INFO:
+      // TODO: output something nicer than just the querystring
+      dumpQuerystring(header);
+      break;
+    case ACTION_FETCHKEY:
+      fetchKeyphrase();
+      break;
+    case ACTION_DECRYPT:
+      storeKeyphrase = 1;
+      if (opts.keyphrase == NULL) {
+        storeKeyphrase = 0;
+        keyphrase = keycache_get(queryGetParam(header, "FH"));
+        if (keyphrase)
+          fprintf(stderr, "Keyphrase from cache: %s\n", keyphrase);
+        else
+          fetchKeyphrase();
+      }
+      else {
+        keyphrase = strdup(opts.keyphrase);
+      }
+      decryptFile();
+      if (storeKeyphrase)
+        keycache_put(queryGetParam(header, "FH"), keyphrase);
+      break;
+    case ACTION_VERIFY:
+      verifyOnly();
+      break;
+  }
+}
+
 void usageError() {
   fputs("\n"
     "Usage: otrtool [-h] [-v] [-i|-f|-x|-y] [-k <keyphrase>] [-e <email>]\n"
     "               [-p <password>] [-D <destfolder>] [-O <destfile>]\n"
-    "               <otrkey-file>\n"
+    "               <otrkey-file1> [<otrkey-file2> ... [<otrkey-fileN>]]\n"
     "\n"
     "MODES OF OPERATION\n"
     "  -i | Display information about file (default action)\n"
@@ -997,8 +1030,9 @@ void usageError() {
 
 int main(int argc, char *argv[]) {
   fputs("OTR-Tool, " VERSION "\n", stderr);
-  
-  int opt, storeKeyphrase;
+
+  int i;
+  int opt;
   while ( (opt = getopt(argc, argv, "hvgifxyk:e:p:D:O:")) != -1) {
     switch (opt) {
       case 'h':
@@ -1050,62 +1084,46 @@ int main(int argc, char *argv[]) {
     usageError();
     exit(EXIT_FAILURE);
   }
-  
-  filename = argv[optind];
-  
-  if (!isatty(0)) interactive = 0;
-  openFile();
-  keycache_open();
-  
-  switch (opts.action) {
-    case ACTION_INFO:
-      // TODO: output something nicer than just the querystring
-      dumpQuerystring(header);
-      break;
-    case ACTION_FETCHKEY:
-      fetchKeyphrase();
-      break;
-    case ACTION_DECRYPT:
-      storeKeyphrase = 1;
-      if (opts.keyphrase == NULL) {
-        storeKeyphrase = 0;
-        keyphrase = keycache_get(queryGetParam(header, "FH"));
-        if (keyphrase)
-          fprintf(stderr, "Keyphrase from cache: %s\n", keyphrase);
-        else
-          fetchKeyphrase();
-      }
-      else {
-        keyphrase = strdup(opts.keyphrase);
-      }
-      
-      errno = 0;
-      nice(10);
-      if (errno == 0 && opts.verbosity >= VERB_DEBUG)
-        fputs("NICE was set to 10\n", stderr);
-      
-      // I am not sure if this really catches all errors
-      // If this causes problems, just delete the ionice-stuff
-      #ifdef __NR_ioprio_set
-        if (syscall(__NR_ioprio_set, 1, getpid(), 7 | 3 << 13) == 0
-             && opts.verbosity >= VERB_DEBUG)
-          fputs("IONICE class was set to Idle\n", stderr);
-      #endif
-      
-      decryptFile();
-      if (storeKeyphrase)
-        keycache_put(queryGetParam(header, "FH"), keyphrase);
-      break;
-    case ACTION_VERIFY:
-      verifyOnly();
-      break;
+  if (argc > optind + 1) {
+    if (opts.destfile != NULL && strcmp(opts.destfile, "-") == 0) {
+      i = 0;
+    }
+    else for (i = optind; i < argc; i++) {
+      if (strcmp(argv[i], "-") == 0)
+        break;
+    }
+    if (i < argc)
+      ERROR("Usage error: piping is not possible with multiple input files");
   }
-  
-  free(header);
-  free(destfilename);
-  
-  if (fclose(file) != 0)
-    PERROR("Error closing file. I don't care, I was going to exit anyway");
+
+  if (!isatty(0)) interactive = 0;
+
+  if (opts.action == ACTION_DECRYPT || opts.action == ACTION_VERIFY) {
+    errno = 0;
+    nice(10);
+    if (errno == 0 && opts.verbosity >= VERB_DEBUG)
+      fputs("NICE was set to 10\n", stderr);
+
+    // I am not sure if this really catches all errors
+    // If this causes problems, just delete the ionice-stuff
+    #ifdef __NR_ioprio_set
+      if (syscall(__NR_ioprio_set, 1, getpid(), 7 | 3 << 13) == 0
+           && opts.verbosity >= VERB_DEBUG)
+        fputs("IONICE class was set to Idle\n", stderr);
+    #endif
+  }
+  if (opts.action == ACTION_FETCHKEY || opts.action == ACTION_DECRYPT) {
+    keycache_open();
+  }
+
+  for (i = optind; i < argc; i++) {
+    filename = argv[i];
+    openFile();
+    processFile();
+    if (fclose(file) != 0)
+      PERROR("Error closing file");
+    free(header);
+  }
   
   exit(EXIT_SUCCESS);
 }

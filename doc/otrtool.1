@@ -1,4 +1,4 @@
-.TH OTRTOOL 1 2010-09-11 ZOMG "otrtool Manual"
+.TH OTRTOOL 1 2015-10-17 ZOMG "otrtool Manual"
 
 .\" ********************************************************************
 .\" ********************************************************************
@@ -8,21 +8,21 @@ otrtool \- decrypts otrkeys from onlinetvrecorder.com
 .SH SYNOPSIS
 
 .B otrtool
-.RB \-i
-.IR otrkey-file
+.B \-i
+.I otrkey-files
 
 .br
 .B otrtool
-.RB \-f
+.B \-f
 .RB [\| \-e
 .IR email \|]
 .RB [\| \-p
 .IR password \|]
-.IR otrkey-file
+.I otrkey-files
 
 .br
 .B otrtool
-.RB \-x
+.B \-x
 .RB [\| \-e
 .IR email \|]
 .RB [\| \-p
@@ -35,13 +35,13 @@ otrtool \- decrypts otrkeys from onlinetvrecorder.com
 .IR output-folder \|]
 .RB [\| \-O
 .IR output-file \|]
-.IR otrkey-file
+.I otrkey-files
 .RE
 
 .br
 .B otrtool
-.RB \-y
-.IR otrkey-file
+.B \-y
+.I otrkey-files
 
 .br
 .B otrtool
@@ -52,7 +52,8 @@ otrtool \- decrypts otrkeys from onlinetvrecorder.com
 .\" ********************************************************************
 .SH DESCRIPTION
 .B otrtool
-aims to provide an open source tool to deal with otrkey\-files from onlinetvrecoder.com. At the moment it is able to decrypt them, in the future a download manager and/or EPG could be added.
+aims to provide an open source tool to deal with otrkey\-files from onlinetvrecoder.com.
+.\"At the moment it is able to decrypt them, in the future a download manager and/or EPG could be added.
 
 
 .\" ********************************************************************
@@ -65,23 +66,23 @@ aims to provide an open source tool to deal with otrkey\-files from onlinetvreco
 .TP
 .B \-i
 Display information about
-.I otrkey-file
+.I otrkey-files
 
 .TP
 .B \-f
 Fetch keyphrase for
-.I otrkey-file
+.I otrkey-files
 
 .TP
 .B \-x
 Fetch keyphrase for
-.I otrkey-file
-and decrypt it
+.I otrkey-files
+and decrypt them
 
 .TP
 .B \-y
 Verify the integrity of
-.I otrkey-file
+.I otrkey-files
 without decrypting
 
 
@@ -126,7 +127,7 @@ This overrides
 .BI \-e \ email
 Authenticate using
 .I email
-as eMail address
+as e-mail address
 
 .TP
 .BI \-p \ password
