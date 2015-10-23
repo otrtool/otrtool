@@ -73,6 +73,8 @@ static struct otrtool_options opts = {
 };
 
 static int interactive = 1; // ask questions instead of exiting
+static int logfilemode = 0; // do not output progress bar
+
 static char *email = NULL;
 static char *password = NULL;
 static char *keyphrase = NULL;
@@ -389,6 +391,8 @@ void showProgress(long long position, long long length) {
   const char progressbar[41] = "========================================";
   const char *rotatingFoo = "|/-\\";
 
+  if (logfilemode)
+    return;
   if (length > 0) {
     if (oldpos > position) {
       oldpos = 0;
@@ -878,7 +882,8 @@ void verifyOnly() {
   }
   if (position < length) {
     if (!feof(file)) PERROR("fread");
-    fputs("\nfile is too short\n", stderr);
+    if (!logfilemode) fputc('\n', stderr);
+    fputs("file is too short\n", stderr);
   }
   else
     showProgress(1, 0);
@@ -1138,6 +1143,10 @@ int main(int argc, char *argv[]) {
   }
 
   if (!isatty(0)) interactive = 0;
+  if (!isatty(2)) {
+    logfilemode = 1;
+    interactive = 0;
+  }
 
   if (opts.action == ACTION_DECRYPT || opts.action == ACTION_VERIFY) {
     errno = 0;
