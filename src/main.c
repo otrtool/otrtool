@@ -382,6 +382,40 @@ void dumpHex(void *data_, int len) {
   free(hexrep_orig);
 }
 
+/* special case length=0 means 'finished' */
+void showProgress(long long position, long long length) {
+  static long long oldpos = 0;
+  static unsigned int blocknum = 0;
+  const char progressbar[41] = "========================================";
+  const char *rotatingFoo = "|/-\\";
+
+  if (length > 0) {
+    if (oldpos > position) {
+      oldpos = 0;
+      blocknum = 0;
+    }
+    if (position - oldpos >= 2097152 || position == 0) {
+      if (opts.guimode == 0) {
+        fprintf(stderr, "[%-40.*s] %3i%% %c\r", (int)(position*40/length),
+            progressbar, (int)(position*100/length),
+            rotatingFoo[blocknum++ % 4]);
+      } else {
+        fprintf(stderr, "gui> %3i\n", (int)(position*100/length));
+      }
+      fflush(stderr);
+      oldpos = position;
+    }
+  } else {
+    if (opts.guimode == 0) {
+      fputs("[========================================] 100%    \n", stderr);
+    } else {
+      fputs("gui> Finished\n", stderr);
+    }
+    oldpos = 0;
+    blocknum = 0;
+  }
+}
+
 // ###################### special functions ####################
 
 char * getHeader() {
@@ -831,19 +865,24 @@ void verifyOnly() {
   size_t n;
   static char buffer[65536];
   long long length;
-  
+  long long position;
+
   length = atoll(queryGetParam(header, "SZ")) - 522;
   fputs("Verifying otrkey...\n", stderr);
   verifyFile_init(&vfy, 1);
-  while (length > 0
-      && (n = fread(buffer, 1, MIN(length, sizeof(buffer)), file)) > 0) {
+  for (position = 0; position < length; position += n) {
+    showProgress(position, length);
+    n = fread(buffer, 1, MIN(length - position, sizeof(buffer)), file);
+    if (n == 0 || ferror(file)) break;
     verifyFile_data(&vfy, buffer, n);
-    length -= n;
   }
-  if (length > 0) {
+  if (position < length) {
     if (!feof(file)) PERROR("fread");
-    fputs("file is too short\n", stderr);
+    fputs("\nfile is too short\n", stderr);
   }
+  else
+    showProgress(1, 0);
+
   if (fread(buffer, 1, 1, file) > 0)
     fputs("file contains trailing garbage\n", stderr);
   else if (!feof(file))
@@ -906,20 +945,17 @@ void decryptFile() {
   
   unsigned long long length = atoll(queryGetParam(header, "SZ")) - 522;
   unsigned long long position = 0;
-  unsigned int blocknum;
   size_t readsize;
   size_t writesize;
   static char buffer[65536];
-  
-  char progressbar[41];
-  const char *rotatingFoo = "|/-\\";
   vfy_t vfy_in, vfy_out;
   
   verifyFile_init(&vfy_in, 1);
   verifyFile_init(&vfy_out, 0);
   
-  blocknum = 0;
   while (position < length) {
+    showProgress(position, length);
+
     if (length - position >= sizeof(buffer)) {
       readsize = fread(buffer, 1, sizeof(buffer), file);
     } else {
@@ -942,26 +978,9 @@ void decryptFile() {
       PERROR("Error writing to destination file");
     
     position += writesize;
-    if (position % 2097152 == 0) {
-      if (opts.guimode == 0) {
-        memset(progressbar, ' ', 40);
-        memset(progressbar, '=', (position*40)/length);
-        progressbar[40] = 0;
-        fprintf(stderr, "[%s] %3lli%% %c\r", progressbar, (position*100)/length,
-          rotatingFoo[blocknum++ % 4]);
-      } else {
-        fprintf(stderr, "gui> %3lli\n", (position*100)/length);
-      }
-      fflush(stderr);
-    }
   }
-  
-  if (opts.guimode == 0) {
-    fputs("[========================================] 100%    \n", stderr);
-  } else {
-    fputs("gui> Finished\n", stderr);
-  }
-  
+  showProgress(1, 0);
+
   verifyFile_final(&vfy_in);
   verifyFile_final(&vfy_out);
   fputs("OK checksums from header match\n", stderr);
