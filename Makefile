@@ -8,21 +8,7 @@
 # 'make clean'   removes all .o and executable files
 #
 
-SHELL = /bin/sh
-.SUFFIXES:
-.SUFFIXES: .c .o
-PREFIX = /usr/local
-
-DVERSION = v1.1.0
-VERSION := $(shell git describe --tags --long --dirty 2>/dev/null || echo "$(DVERSION)")
-
-CC = gcc
-CFLAGS = -O3 -Wall -Wextra -g -DVERSION='"$(VERSION)"'
-LDFLAGS = -lmcrypt -lcurl
-
-# large file support
-CFLAGS += $(shell getconf LFS_CFLAGS)
-LDFLAGS += $(shell getconf LFS_LDFLAGS)
+include config.mk
 
 SRCS = src/md5.c src/main.c
 MAIN = otrtool
@@ -52,8 +38,10 @@ clean:
 	$(RM) $(OBJS) $(MAIN) $(MAIN).1.gz
 
 install: $(MAIN) $(MAIN).1.gz
-	install -m 0755 $(MAIN) $(PREFIX)/bin
-	install -m 0644 $(MAIN).1.gz $(PREFIX)/share/man/man1
+	mkdir -p $(DESTDIR)$(PREFIX)/bin
+	mkdir -p $(DESTDIR)$(MANPREFIX)/man1
+	install -m 0755 $(MAIN) $(DESTDIR)$(PREFIX)/bin
+	install -m 0644 $(MAIN).1.gz $(DESTDIR)$(MANPREFIX)/man1
 
 depend: $(SRCS)
 	makedepend -w70 -Y $^
