@@ -278,6 +278,8 @@ char * queryGetParam(char *query, char *name) {
     if (strncmp(begin, name, nameLen) == 0 && begin[nameLen] == '=') {
       begin += nameLen + 1;
       end = index(begin, '&');
+      if (end == NULL)
+        end = begin + strlen(begin);
       char *result = malloc(end - begin + 1);
       strncpy(result, begin, end - begin);
       result[end - begin] = 0;
