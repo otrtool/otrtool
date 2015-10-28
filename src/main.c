@@ -1168,6 +1168,8 @@ int main(int argc, char *argv[]) {
 
   for (i = optind; i < argc; i++) {
     filename = argv[i];
+    if (argc > optind + 1)
+      fprintf(stderr, "\n==> %s <==\n", filename);
     openFile();
     processFile();
     if (fclose(file) != 0)
