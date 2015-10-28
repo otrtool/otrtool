@@ -83,6 +83,7 @@ static char *destfilename = NULL;
 
 static FILE *file = NULL;
 static FILE *keyfile = NULL;
+static FILE *ttyfile = NULL;
 static char *header = NULL;
 static char *info = NULL;
 
@@ -710,9 +711,9 @@ void fetchKeyphrase() {
     if (!interactive) ERROR("Email address not specified");
     opts.email = malloc(51);
     fputs("Enter your eMail-address: ", stderr);
-    if (scanf("%50s", opts.email) < 1)
+    if (fscanf(ttyfile, "%50s", opts.email) < 1)
       ERROR("Email invalid");
-    while (getchar() != '\n');
+    while (fgetc(ttyfile) != '\n');
   }
   email = strdup(opts.email);
 
@@ -720,16 +721,16 @@ void fetchKeyphrase() {
     if (!interactive) ERROR("Password not specified");
     opts.password = malloc(51);
     fputs("Enter your password: ", stderr);
-    tcgetattr(0, &ios0);
+    tcgetattr(fileno(ttyfile), &ios0);
     ios1 = ios0;
     ios1.c_lflag &= ~ECHO;
-    tcsetattr(0, TCSAFLUSH, &ios1);
-    if (scanf("%50s", opts.password) < 1) {
+    tcsetattr(fileno(ttyfile), TCSAFLUSH, &ios1);
+    if (fscanf(ttyfile, "%50s", opts.password) < 1) {
       tcsetattr(0, TCSAFLUSH, &ios0);
       ERROR("Password invalid");
     }
-    tcsetattr(0, TCSAFLUSH, &ios0);
-    while (getchar() != '\n');
+    tcsetattr(fileno(ttyfile), TCSAFLUSH, &ios0);
+    while (fgetc(ttyfile) != '\n');
     fputc('\n', stderr);
   }
   password = strdup(opts.password);
@@ -929,8 +930,8 @@ void decryptFile() {
       if (!interactive) ERROR("Destination file exists: %s", destfilename);
       fprintf(stderr, "Destination file exists: %s\nType y to overwrite: ",
         destfilename);
-      if (getchar() != 'y') exit(EXIT_FAILURE);
-      while (getchar() != '\n');
+      if (fgetc(ttyfile) != 'y') exit(EXIT_FAILURE);
+      while (fgetc(ttyfile) != '\n');
       fd = open(destfilename, O_WRONLY|O_TRUNC, 0);
     }
     else
@@ -1141,10 +1142,19 @@ int main(int argc, char *argv[]) {
       ERROR("Usage error: piping is not possible with multiple input files");
   }
 
-  if (!isatty(0)) interactive = 0;
   if (!isatty(2)) {
     logfilemode = 1;
     interactive = 0;
+  }
+  if (interactive) {
+    if (!isatty(0)) {
+      ttyfile = fopen("/dev/tty", "r");
+      if (ttyfile == NULL) {
+        if (opts.verbosity >= VERB_DEBUG) perror("open /dev/tty");
+        interactive = 0;
+      }
+    }
+    else ttyfile = stdin;
   }
 
   if (opts.action == ACTION_DECRYPT || opts.action == ACTION_VERIFY) {
