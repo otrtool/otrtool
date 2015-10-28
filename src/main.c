@@ -622,22 +622,19 @@ struct MemoryStruct * contactServer(char *request) {
 }
 
 char * decryptResponse(char *response, int length, void *bigkey) {
-  MCRYPT blowfish = mcrypt_module_open("blowfish-compat", NULL, "ecb", NULL);
+  MCRYPT blowfish = mcrypt_module_open("blowfish-compat", NULL, "cbc", NULL);
   
+  if (length < mcrypt_enc_get_iv_size(blowfish) || length < 8)
+    return NULL;
   length -= 8;
   
   char *result = malloc(length);
   memcpy(result, response+8, length);
   
-  mcrypt_generic_init(blowfish, bigkey, 28, NULL);
+  mcrypt_generic_init(blowfish, bigkey, 28, response);
   mdecrypt_generic(blowfish, result, length);
   mcrypt_generic_deinit(blowfish);
   mcrypt_module_close(blowfish);
-  
-  int i;
-  for (i = 0 ; i < length ; i++) {
-    result[i] ^= response[i];
-  }
   
   char *padding = strstr(result, "&D=");
   if (padding == NULL)
