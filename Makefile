@@ -13,7 +13,7 @@ SHELL = /bin/sh
 .SUFFIXES: .c .o
 PREFIX = /usr/local
 
-DVERSION = v1.1.0
+DVERSION = v1.2.0
 VERSION := $(shell git describe --tags --long --dirty 2>/dev/null || echo "$(DVERSION)")
 
 CC = gcc

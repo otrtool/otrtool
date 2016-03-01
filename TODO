@@ -10,3 +10,6 @@
 * Valgrind-cleanliness
 * store header information in a struct rather than calling
   queryGetParam() in various places
+* in multi-file mode:
+  * compact output (one line per file)
+  * error handling: continue with next file on non-critical errors

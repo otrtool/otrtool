@@ -1,6 +1,6 @@
 For detailed information, see the Git log.
 
-1.2.0 [XXXX-XX-XX]
+1.2.0 [2016-03-01]
 * Multiple input files
 * Option to unlink after decryption
 * 'Verify only' mode of operation
