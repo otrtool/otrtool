@@ -868,8 +868,8 @@ void verifyOnly() {
   vfy_t vfy;
   size_t n;
   static char buffer[65536];
-  long long length;
-  long long position;
+  unsigned long long length;
+  unsigned long long position;
 
   length = atoll(queryGetParam(header, "SZ")) - 522;
   fputs("Verifying otrkey...\n", stderr);
