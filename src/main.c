@@ -1105,10 +1105,12 @@ int main(int argc, char *argv[]) {
         opts.keyphrase = optarg;
         break;
       case 'e':
-        opts.email = optarg;
+        opts.email = strdup(optarg);
+        memset(optarg, 'x', strlen(optarg));
         break;
       case 'p':
-        opts.password = optarg;
+        opts.password = strdup(optarg);
+        memset(optarg, 'x', strlen(optarg));
         break;
       case 'D':
         opts.destdir = optarg;
