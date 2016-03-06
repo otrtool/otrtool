@@ -1126,6 +1126,13 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
   }
+  if (opts.verbosity >= VERB_DEBUG) {
+    fputs("command line: ", stderr);
+    for (i = 0; i < argc; ++i) {
+      fputs(argv[i], stderr);
+      fputc((i == argc - 1) ? '\n' : ' ', stderr);
+    }
+  }
   
   if (optind >= argc) {
     fprintf(stderr, "Missing argument: otrkey-file\n");
