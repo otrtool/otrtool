@@ -22,6 +22,32 @@ Produces nice output!
     [========================================] 100%
     OK checksums from header match
 
+How to install from source
+--------------------------
+
+### Get source
+
+* stable: [tarball](https://github.com/otrtool/otrtool/tarball/stable)
+* development: [tarball](https://github.com/otrtool/otrtool/tarball/master)
+* git repository: `git clone https://github.com/otrtool/otrtool.git`
+
+### Install dependencies
+
+The dependencies are:
+
+* libmcrypt
+* libcurl / curl
+
+### Building
+
+    $ make
+
+After that, copy the following files to the places they belong:
+
+* `./otrtool` (the main binary)
+* `./otrtool.1.gz` (the gzip'ed manpage)
+* `./LICENSE` (the (rights waiver) license)
+
 Packages for your distribution of choice
 ----------------------------------------
 
@@ -66,32 +92,6 @@ This list will only contain major and minor updates, no bugfix releases.
 
 * `otrtool -h` slimmed down to "important" commands
 * (various bugfixes)
-
-How to install from source
---------------------------
-
-### Get source
-
-* stable: [tarball](https://github.com/otrtool/otrtool/tarball/stable)
-* development: [tarball](https://github.com/otrtool/otrtool/tarball/master)
-* git repository: `git clone https://github.com/otrtool/otrtool.git`
-
-### Install dependencies
-
-The dependencies are:
-
-* libmcrypt
-* libcurl / curl
-
-### Building
-
-    $ make
-
-After that, copy the following files to the places they belong:
-
-* `./otrtool` (the main binary)
-* `./otrtool.1.gz` (the gzip'ed manpage)
-* `./LICENSE` (the (rights waiver) license)
 
 Links
 -----
