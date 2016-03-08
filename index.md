@@ -93,22 +93,6 @@ This list will only contain major and minor updates, no bugfix releases.
 * `otrtool -h` slimmed down to "important" commands
 * (various bugfixes)
 
-Links
------
-
-* [Homepage](https://otrtool.github.io/otrtool/)
-* [GitHub repository](https://github.com/otrtool/otrtool)
-* [Bug tracker](https://github.com/otrtool/otrtool/issues)
-
-### Related projects:
-
-* [Lem's Perl/Tk GUI](https://github.com/Lem/otrtool-gui)
-
-Contact
--------
-
-    E-Mail:                 eshrdlu/AT/yandex/DOT/com
-
 Reporting Bugs
 --------------
 
@@ -125,3 +109,19 @@ Copying
 
 otrtool uses the Creative Commons [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/) rights waiver / license, which basically means you are free to do *anything* with otrtool.
 The full text is included in the `LICENSE` file within the source tree.
+
+Links
+-----
+
+* [Homepage](https://otrtool.github.io/otrtool/)
+* [GitHub repository](https://github.com/otrtool/otrtool)
+* [Bug tracker](https://github.com/otrtool/otrtool/issues)
+
+### Related projects:
+
+* [Lem's Perl/Tk GUI](https://github.com/Lem/otrtool-gui)
+
+Contact
+-------
+
+    E-Mail:                 eshrdlu/AT/yandex/DOT/com
