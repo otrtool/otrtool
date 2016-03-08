@@ -41,12 +41,14 @@ This list will only contain major and minor updates, no bugfix releases.
 
 ### 1.2.0
 2016-03-01
+
 * Multiple input files
 * Option to unlink after decryption
 * 'Verify only' mode of operation
 
 ### 1.1.0
 2013-07-15
+
 * Integrity check before and after decryption
 * Improved decryption performance
 * Keyphrase cache
@@ -54,12 +56,14 @@ This list will only contain major and minor updates, no bugfix releases.
 
 ### 1.0
 2010-11-05
+
 * Offers to overwrite destination file
 * Piping in otrkeys using `tail -f` now works
 * Nicer error messages ;-)
 
 ### 0.9
 2010-10-17
+
 * `otrtool -h` slimmed down to "important" commands
 * (various bugfixes)
 
@@ -75,6 +79,7 @@ How to install from source
 ### Install dependencies
 
 The dependencies are:
+
 * libmcrypt
 * libcurl / curl
 
