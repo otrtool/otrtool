@@ -1151,7 +1151,7 @@ int main(int argc, char *argv[]) {
       ERROR("Usage error: piping is not possible with multiple input files");
   }
 
-  if (!isatty(2)) {
+  if (!isatty(2) && opts.guimode == 0) {
     logfilemode = 1;
     interactive = 0;
   }
