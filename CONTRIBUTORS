@@ -4,10 +4,8 @@ eddy41
   (und extrem lesenswerte Blogeintrag) ist in der Datei README, Abschnitt
   HISTORY, verlinkt.
 
-
 PyroPeter
   Hauptautor von otrtool, betrieb die Pflege bis einschließlich v1.1.0
-
 
 roadman17 aus dem ip-phone-forum
   Zitat von http://www.ip-phone-forum.de/showthread.php?p=1616703 :
@@ -37,11 +35,9 @@ roadman17 aus dem ip-phone-forum
   dass dieses Projekt in der Tonne landet.
   (Die OpenSSL-Abhängigkeit wurde übrigens entfernt ;-)
 
-
 Least Significant <least@nxdomain.dyndns.org>
   Hat Patches eingesendet, die das Kompilieren und die Entschlüsselung von
   Dateien größer 2GB auf i686-Systemen erlauben.
-
 
 jester
   Hat einen Patch eingesendet, der (u.a.) Passphrase-Caching implementiert
@@ -50,16 +46,16 @@ jester
   eshrdlus Änderungen gemerged hat, die diesen Patch überflüssig machen.
   Sorry :-(
 
-
 eshrdlu
   * Verschiedene Bugfixes (u.a. für eine Sicherheitslücke)
   * Checksummenprüfung
   * Passphrase-Caching
   * Support für Entschlüsselung in eine Pipe
 
-
 Jonny007-MKD
-
 BlueC0re
+Dominik Muth
+gcurse
+Ramin Yaghoubzadeh
 
 Aktuelle und nähere Informationen finden sich im Git-Log.

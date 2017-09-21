@@ -1,5 +1,8 @@
 For detailed information, see the Git log.
 
+1.2.1 [2017-09-21]
+* server IP address updated
+
 1.2.0 [2016-03-01]
 * Multiple input files
 * Option to unlink after decryption
