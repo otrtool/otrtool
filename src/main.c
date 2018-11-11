@@ -876,8 +876,8 @@ void verifyOnly() {
   verifyFile_init(&vfy, 1);
   for (position = 0; position < length; position += n) {
     showProgress(position, length);
-    n = fread(buffer, 1, MIN(length - position, sizeof(buffer)), file);
-    if (n == 0 || ferror(file)) break;
+    n = MIN(length - position, sizeof(buffer));
+    if (fread(buffer, 1, n, file) < n) break;
     verifyFile_data(&vfy, buffer, n);
   }
   if (position < length) {
@@ -961,12 +961,8 @@ void decryptFile() {
   while (position < length) {
     showProgress(position, length);
 
-    if (length - position >= sizeof(buffer)) {
-      readsize = fread(buffer, 1, sizeof(buffer), file);
-    } else {
-      readsize = fread(buffer, 1, length - position, file);
-    }
-    if (readsize <= 0) {
+    readsize = MIN(length - position, sizeof(buffer));
+    if (fread(buffer, 1, readsize, file) < readsize) {
       if (feof(file))
         ERROR("Input file is too short");
       PERROR("Error reading input file");
