@@ -8,6 +8,8 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/syscall.h>
+#include <pthread.h>
+#include <semaphore.h>
 
 #include <time.h>
 
@@ -896,6 +898,67 @@ void verifyOnly() {
   fputs("file is OK\n", stderr);
 }
 
+struct worker_info {
+  struct worker_info *next;
+  sem_t read_sema, ivfy_sema, ovfy_sema, write_sema;
+  void *key;
+  unsigned long long length;
+  unsigned long long *pposition;
+  FILE *file, *destfile;
+  vfy_t *vfy_inp, *vfy_outp;
+};
+
+void *decryptFileWorker(void *w_) {
+  struct worker_info *w = w_;
+  char buffer[65536];
+  unsigned long long length = w->length;
+  unsigned long long position;
+  size_t readsize, writesize;
+  MCRYPT blowfish;
+
+  blowfish = mcrypt_module_open("blowfish-compat", NULL, "ecb", NULL);
+  mcrypt_generic_init(blowfish, w->key, 28, NULL);
+
+  sem_wait(&w->read_sema);
+  while ((position = *w->pposition) < length) {
+    showProgress(position, length);
+    readsize = MIN(length - position, sizeof(buffer));
+    if (fread(buffer, 1, readsize, w->file) < readsize) {
+      if (feof(w->file))
+        ERROR("Input file is too short");
+      PERROR("Error reading input file");
+    }
+    *w->pposition = position + readsize;
+    sem_post(&w->next->read_sema);
+
+    sem_wait(&w->ivfy_sema);
+    verifyFile_data(w->vfy_inp, buffer, readsize);
+    sem_post(&w->next->ivfy_sema);
+
+    /* If the payload length is not a multiple of eight,
+     * the last few bytes are stored unencrypted */
+    mdecrypt_generic(blowfish, buffer, readsize - readsize % 8);
+
+    sem_wait(&w->ovfy_sema);
+    verifyFile_data(w->vfy_outp, buffer, readsize);
+    sem_post(&w->next->ovfy_sema);
+
+    sem_wait(&w->write_sema);
+    writesize = fwrite(buffer, 1, readsize, w->destfile);
+    if (writesize != readsize)
+      PERROR("Error writing to destination file");
+    sem_post(&w->next->write_sema);
+
+    sem_wait(&w->read_sema);
+  }
+  sem_post(&w->next->read_sema);
+
+  mcrypt_generic_deinit(blowfish);
+  mcrypt_module_close(blowfish);
+
+  return NULL;
+}
+
 void decryptFile() {
   int fd;
   char *headerFN;
@@ -945,49 +1008,72 @@ void decryptFile() {
   fputs("Decrypting and verifying...\n", stderr); // -----------------------
   
   void *key = hex2bin(keyphrase);
-  MCRYPT blowfish = mcrypt_module_open("blowfish-compat", NULL, "ecb", NULL);
-  mcrypt_generic_init(blowfish, key, 28, NULL);
-  
   unsigned long long length = atoll(queryGetParam(header, "SZ")) - 522;
   unsigned long long position = 0;
-  size_t readsize;
-  size_t writesize;
-  static char buffer[65536];
   vfy_t vfy_in, vfy_out;
   
   verifyFile_init(&vfy_in, 1);
   verifyFile_init(&vfy_out, 0);
-  
-  while (position < length) {
-    showProgress(position, length);
 
-    readsize = MIN(length - position, sizeof(buffer));
-    if (fread(buffer, 1, readsize, file) < readsize) {
-      if (feof(file))
-        ERROR("Input file is too short");
-      PERROR("Error reading input file");
-    }
-    
-    verifyFile_data(&vfy_in, buffer, readsize);
-    /* If the payload length is not a multiple of eight,
-     * the last few bytes are stored unencrypted */
-    mdecrypt_generic(blowfish, buffer, readsize - readsize % 8);
-    verifyFile_data(&vfy_out, buffer, readsize);
-    
-    writesize = fwrite(buffer, 1, readsize, destfile);
-    if (writesize != readsize)
-      PERROR("Error writing to destination file");
-    
-    position += writesize;
+  const int n_wrk_max = 8;
+  pthread_t wrk_id[n_wrk_max];
+  struct worker_info wrk_info[n_wrk_max];
+  int n_wrk = 1;
+  int i;
+
+#ifdef _SC_NPROCESSORS_ONLN
+  i = sysconf(_SC_NPROCESSORS_ONLN);
+  if (opts.verbosity >= VERB_DEBUG)
+    fprintf(stderr, "number of CPUs: %d\n", i);
+  if (i > 0) n_wrk = MIN(i, n_wrk_max);
+#endif
+  if (opts.verbosity >= VERB_DEBUG)
+    fprintf(stderr, "number of worker threads: %d\n", n_wrk);
+
+  /* Create worker threads */
+  for (i=0; i < n_wrk; i++) {
+    wrk_info[i].next = (i < n_wrk - 1) ? wrk_info + i + 1 : wrk_info;
+    if (sem_init(&wrk_info[i].read_sema, 0, 0) < 0 ||
+        sem_init(&wrk_info[i].ivfy_sema, 0, 0) < 0 ||
+        sem_init(&wrk_info[i].ovfy_sema, 0, 0) < 0 ||
+        sem_init(&wrk_info[i].write_sema, 0, 0) < 0)
+      PERROR("sem_init");
+    wrk_info[i].key = key;
+    wrk_info[i].length = length;
+    wrk_info[i].pposition = &position;
+    wrk_info[i].file = file;
+    wrk_info[i].destfile = destfile;
+    wrk_info[i].vfy_inp = &vfy_in;
+    wrk_info[i].vfy_outp = &vfy_out;
+  }
+  for (i=0; i < n_wrk; i++) {
+    errno = pthread_create(&wrk_id[i], NULL, decryptFileWorker, &wrk_info[i]);
+    if (errno != 0) PERROR("pthread_create");
+  }
+
+  /* Go! */
+  sem_post(&wrk_info[0].read_sema);
+  sem_post(&wrk_info[0].ivfy_sema);
+  sem_post(&wrk_info[0].ovfy_sema);
+  sem_post(&wrk_info[0].write_sema);
+
+  /* Wait... */
+  for (i=0; i < n_wrk; i++) {
+    errno = pthread_join(wrk_id[i], NULL);
+    if (errno != 0) PERROR("pthread_join");
+  }
+  for (i=0; i < n_wrk; i++) {
+    if (sem_destroy(&wrk_info[i].read_sema) < 0 ||
+        sem_destroy(&wrk_info[i].ivfy_sema) < 0 ||
+        sem_destroy(&wrk_info[i].ovfy_sema) < 0 ||
+        sem_destroy(&wrk_info[i].write_sema) < 0)
+      PERROR("sem_destroy");
   }
   showProgress(1, 0);
 
   verifyFile_final(&vfy_in);
   verifyFile_final(&vfy_out);
   fputs("OK checksums from header match\n", stderr);
-  
-  mcrypt_generic_deinit(blowfish);
-  mcrypt_module_close(blowfish);
   
   if (fclose(destfile) != 0)
     PERROR("Error closing destination file.");

@@ -16,7 +16,7 @@ PREFIX ?= /usr/local
 DVERSION = v1.2.1
 VERSION ?= $(shell git describe --tags --long --dirty 2>/dev/null || echo "$(DVERSION)")
 
-CFLAGS += -O3 -Wall -Wextra -g -DVERSION='"$(VERSION)"'
+CFLAGS += -O3 -Wall -Wextra -g -pthread -DVERSION='"$(VERSION)"'
 LDFLAGS += -lmcrypt -lcurl
 
 # large file support
