@@ -900,7 +900,7 @@ void verifyOnly() {
 
 struct worker_info {
   struct worker_info *next;
-  sem_t read_sema, ivfy_sema, ovfy_sema, write_sema;
+  sem_t *read_sema, *ivfy_sema, *ovfy_sema, *write_sema;
   void *key;
   unsigned long long length;
   unsigned long long *pposition;
@@ -1015,7 +1015,7 @@ void decryptFile() {
   verifyFile_init(&vfy_in, 1);
   verifyFile_init(&vfy_out, 0);
 
-  const int n_wrk_max = 8;
+  const int n_wrk_max = 1;
   pthread_t wrk_id[n_wrk_max];
   struct worker_info wrk_info[n_wrk_max];
   int n_wrk = 1;
@@ -1033,10 +1033,10 @@ void decryptFile() {
   /* Create worker threads */
   for (i=0; i < n_wrk; i++) {
     wrk_info[i].next = (i < n_wrk - 1) ? wrk_info + i + 1 : wrk_info;
-    if (sem_init(&wrk_info[i].read_sema, 0, 0) < 0 ||
-        sem_init(&wrk_info[i].ivfy_sema, 0, 0) < 0 ||
-        sem_init(&wrk_info[i].ovfy_sema, 0, 0) < 0 ||
-        sem_init(&wrk_info[i].write_sema, 0, 0) < 0)
+    if ( (wrk_info[i].read_sema  = sem_open("/semaphore.read",  O_CREAT, 0644, 1)) == SEM_FAILED ||
+         (wrk_info[i].ivfy_sema  = sem_open("/semaphore.ivfy",  O_CREAT, 0644, 1)) == SEM_FAILED ||
+         (wrk_info[i].ovfy_sema  = sem_open("/semaphore.ovfy",  O_CREAT, 0644, 1)) == SEM_FAILED ||
+         (wrk_info[i].write_sema = sem_open("/semaphore.write", O_CREAT, 0644, 1)) == SEM_FAILED )
       PERROR("sem_init");
     wrk_info[i].key = key;
     wrk_info[i].length = length;
@@ -1063,11 +1063,19 @@ void decryptFile() {
     if (errno != 0) PERROR("pthread_join");
   }
   for (i=0; i < n_wrk; i++) {
-    if (sem_destroy(&wrk_info[i].read_sema) < 0 ||
-        sem_destroy(&wrk_info[i].ivfy_sema) < 0 ||
-        sem_destroy(&wrk_info[i].ovfy_sema) < 0 ||
-        sem_destroy(&wrk_info[i].write_sema) < 0)
-      PERROR("sem_destroy");
+    if ( sem_close(wrk_info[i].read_sema) == -1 ||
+         sem_close(wrk_info[i].ivfy_sema) == -1 ||
+         sem_close(wrk_info[i].ovfy_sema) == -1 ||
+         sem_close(wrk_info[i].write_sema) == -1 ) {
+      PERROR("sem_close");
+    }
+
+    if ( sem_unlink("/semaphore.read") == -1 ||
+         sem_unlink("/semaphore.ivfy") == -1 ||
+         sem_unlink("/semaphore.ovfy") == -1 ||
+         sem_unlink("/semaphore.write") == -1 ) {
+      PERROR("sem_unlink");
+    }
   }
   showProgress(1, 0);
 
