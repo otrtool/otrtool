@@ -8,10 +8,15 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/syscall.h>
-#include <pthread.h>
-#include <semaphore.h>
-
 #include <time.h>
+
+#if _POSIX_THREADS > 0 && _POSIX_SEMAPHORES > 0
+  #include <pthread.h>
+  #include <semaphore.h>
+  #define MT 1
+#else
+  #define MT 0
+#endif
 
 #include <mcrypt.h>
 #include "md5.h"
@@ -424,6 +429,53 @@ void showProgress(long long position, long long length) {
     blocknum = 0;
   }
 }
+
+// ################# multi-threading functions #################
+/* Just some wrapper functions that handle errors
+   and allow to fall back to single-threading easily */
+
+#if MT == 0 /* no multi-threading */
+typedef void *thread_t;
+typedef int semaphore_t;
+
+thread_t createThread(void *(*s)(void *), void *a) { return s(a); }
+void *joinThread(thread_t t) { return t; }
+#define initSemaphore(x,y)
+#define destroySemaphore(x)
+#define waitSemaphore(x)
+#define postSemaphore(x)
+
+#elif MT == 1 /* POSIX threads and semaphores */
+typedef pthread_t thread_t;
+typedef sem_t semaphore_t;
+
+thread_t createThread(void *(*start_routine)(void *), void *arg) {
+  pthread_t tid;
+  errno = pthread_create(&tid, NULL, start_routine, arg);
+  if (errno != 0) PERROR("pthread_create");
+  return tid;
+}
+void *joinThread(thread_t tid) {
+  void *res;
+  errno = pthread_join(tid, &res);
+  if (errno != 0) PERROR("pthread_join");
+  return res;
+}
+void initSemaphore(semaphore_t *psem, unsigned int value) {
+  if (sem_init(psem, 0, value) < 0) PERROR("sem_init");
+}
+void destroySemaphore(semaphore_t *psem) {
+  if (sem_destroy(psem) < 0) PERROR("sem_destroy");
+}
+void waitSemaphore(semaphore_t *psem) {
+  int i;
+  while ((i = sem_wait(psem)) == -1 && errno == EINTR);
+  if (i < 0) PERROR("sem_wait");
+}
+void postSemaphore(semaphore_t *psem) {
+  if (sem_post(psem) < 0) PERROR("sem_post");
+}
+#endif /* MT */
 
 // ###################### special functions ####################
 
@@ -900,7 +952,7 @@ void verifyOnly() {
 
 struct worker_info {
   struct worker_info *next;
-  sem_t read_sema, ivfy_sema, ovfy_sema, write_sema;
+  semaphore_t read_sema, ivfy_sema, ovfy_sema, write_sema;
   void *key;
   unsigned long long length;
   unsigned long long *pposition;
@@ -919,7 +971,7 @@ void *decryptFileWorker(void *w_) {
   blowfish = mcrypt_module_open("blowfish-compat", NULL, "ecb", NULL);
   mcrypt_generic_init(blowfish, w->key, 28, NULL);
 
-  sem_wait(&w->read_sema);
+  waitSemaphore(&w->read_sema);
   while ((position = *w->pposition) < length) {
     showProgress(position, length);
     readsize = MIN(length - position, sizeof(buffer));
@@ -929,29 +981,29 @@ void *decryptFileWorker(void *w_) {
       PERROR("Error reading input file");
     }
     *w->pposition = position + readsize;
-    sem_post(&w->next->read_sema);
+    postSemaphore(&w->next->read_sema);
 
-    sem_wait(&w->ivfy_sema);
+    waitSemaphore(&w->ivfy_sema);
     verifyFile_data(w->vfy_inp, buffer, readsize);
-    sem_post(&w->next->ivfy_sema);
+    postSemaphore(&w->next->ivfy_sema);
 
     /* If the payload length is not a multiple of eight,
      * the last few bytes are stored unencrypted */
     mdecrypt_generic(blowfish, buffer, readsize - readsize % 8);
 
-    sem_wait(&w->ovfy_sema);
+    waitSemaphore(&w->ovfy_sema);
     verifyFile_data(w->vfy_outp, buffer, readsize);
-    sem_post(&w->next->ovfy_sema);
+    postSemaphore(&w->next->ovfy_sema);
 
-    sem_wait(&w->write_sema);
+    waitSemaphore(&w->write_sema);
     writesize = fwrite(buffer, 1, readsize, w->destfile);
     if (writesize != readsize)
       PERROR("Error writing to destination file");
-    sem_post(&w->next->write_sema);
+    postSemaphore(&w->next->write_sema);
 
-    sem_wait(&w->read_sema);
+    waitSemaphore(&w->read_sema);
   }
-  sem_post(&w->next->read_sema);
+  postSemaphore(&w->next->read_sema);
 
   mcrypt_generic_deinit(blowfish);
   mcrypt_module_close(blowfish);
@@ -1015,8 +1067,8 @@ void decryptFile() {
   verifyFile_init(&vfy_in, 1);
   verifyFile_init(&vfy_out, 0);
 
-  const int n_wrk_max = 8;
-  pthread_t wrk_id[n_wrk_max];
+  const int n_wrk_max = MT ? 8 : 1;
+  thread_t wrk_id[n_wrk_max];
   struct worker_info wrk_info[n_wrk_max];
   int n_wrk = 1;
   int i;
@@ -1027,17 +1079,21 @@ void decryptFile() {
     fprintf(stderr, "number of CPUs: %d\n", i);
   if (i > 0) n_wrk = MIN(i, n_wrk_max);
 #endif
-  if (opts.verbosity >= VERB_DEBUG)
+  if (opts.verbosity >= VERB_DEBUG) {
+  #if MT
     fprintf(stderr, "number of worker threads: %d\n", n_wrk);
+  #else
+    fputs("multi-threading disabled at compile-time\n", stderr);
+  #endif
+  }
 
   /* Create worker threads */
   for (i=0; i < n_wrk; i++) {
     wrk_info[i].next = (i < n_wrk - 1) ? wrk_info + i + 1 : wrk_info;
-    if (sem_init(&wrk_info[i].read_sema, 0, 0) < 0 ||
-        sem_init(&wrk_info[i].ivfy_sema, 0, 0) < 0 ||
-        sem_init(&wrk_info[i].ovfy_sema, 0, 0) < 0 ||
-        sem_init(&wrk_info[i].write_sema, 0, 0) < 0)
-      PERROR("sem_init");
+    initSemaphore(&wrk_info[i].read_sema, 0);
+    initSemaphore(&wrk_info[i].ivfy_sema, 0);
+    initSemaphore(&wrk_info[i].ovfy_sema, 0);
+    initSemaphore(&wrk_info[i].write_sema, 0);
     wrk_info[i].key = key;
     wrk_info[i].length = length;
     wrk_info[i].pposition = &position;
@@ -1046,28 +1102,24 @@ void decryptFile() {
     wrk_info[i].vfy_inp = &vfy_in;
     wrk_info[i].vfy_outp = &vfy_out;
   }
-  for (i=0; i < n_wrk; i++) {
-    errno = pthread_create(&wrk_id[i], NULL, decryptFileWorker, &wrk_info[i]);
-    if (errno != 0) PERROR("pthread_create");
-  }
+  for (i=0; i < n_wrk; i++)
+    wrk_id[i] = createThread(decryptFileWorker, &wrk_info[i]);
 
   /* Go! */
-  sem_post(&wrk_info[0].read_sema);
-  sem_post(&wrk_info[0].ivfy_sema);
-  sem_post(&wrk_info[0].ovfy_sema);
-  sem_post(&wrk_info[0].write_sema);
+  postSemaphore(&wrk_info[0].read_sema);
+  postSemaphore(&wrk_info[0].ivfy_sema);
+  postSemaphore(&wrk_info[0].ovfy_sema);
+  postSemaphore(&wrk_info[0].write_sema);
 
   /* Wait... */
+  for (i=0; i < n_wrk; i++)
+    joinThread(wrk_id[i]);
+
   for (i=0; i < n_wrk; i++) {
-    errno = pthread_join(wrk_id[i], NULL);
-    if (errno != 0) PERROR("pthread_join");
-  }
-  for (i=0; i < n_wrk; i++) {
-    if (sem_destroy(&wrk_info[i].read_sema) < 0 ||
-        sem_destroy(&wrk_info[i].ivfy_sema) < 0 ||
-        sem_destroy(&wrk_info[i].ovfy_sema) < 0 ||
-        sem_destroy(&wrk_info[i].write_sema) < 0)
-      PERROR("sem_destroy");
+    destroySemaphore(&wrk_info[i].read_sema);
+    destroySemaphore(&wrk_info[i].ivfy_sema);
+    destroySemaphore(&wrk_info[i].ovfy_sema);
+    destroySemaphore(&wrk_info[i].write_sema);
   }
   showProgress(1, 0);
 
