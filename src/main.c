@@ -324,24 +324,23 @@ void quote(char *message) {
 }
 
 void dumpQuerystring(char *query) {
-  int length = strlen(query);
   char line[LINE_LENGTH + 1];
   int index = 0;
-  
+
   if (*query == '&') {
     line[0] = '&';
     index++;
     query++;
   }
-  
-  for (; length > 0 ; length --) {
+
+  for (; *query; query++) {
     if (*query == '&') {
       line[index] = '\n';
       fwrite(line, index + 1, 1, stderr);
       index = 0;
     }
     line[index] = *query;
-    
+
     index++;
     if (index == LINE_LENGTH) {
       line[index] = '\n';
@@ -349,7 +348,6 @@ void dumpQuerystring(char *query) {
       line[0] = ' ';
       index = 1;
     }
-    query++;
   }
   line[index] = '\n';
   if (index != LINE_LENGTH) fwrite(line, index + 1, 1, stderr);
