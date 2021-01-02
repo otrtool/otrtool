@@ -617,7 +617,8 @@ char * generateRequest(void *bigkey, char *date) {
 struct MemoryStruct * contactServer(char *request) {
   // http://curl.haxx.se/libcurl/c/getinmemory.html
   CURL *curl_handle;
-  char errorstr[CURL_ERROR_SIZE];
+  CURLcode res;
+  char errbuf[CURL_ERROR_SIZE];
   
   struct MemoryStruct *chunk = malloc(sizeof(struct MemoryStruct));
   chunk->memory=NULL; /* we expect realloc(NULL, size) to work */ 
@@ -644,11 +645,12 @@ struct MemoryStruct * contactServer(char *request) {
   /* set verbosity and error message buffer */
   if (opts.verbosity >= VERB_DEBUG)
     curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, 1);
-  curl_easy_setopt(curl_handle, CURLOPT_ERRORBUFFER, errorstr);
+  curl_easy_setopt(curl_handle, CURLOPT_ERRORBUFFER, errbuf);
   
   /* get it! */ 
-  if (curl_easy_perform(curl_handle) != 0)
-    ERROR("cURL error: %s", errorstr);
+  *errbuf = 0;
+  if ((res = curl_easy_perform(curl_handle)) != CURLE_OK)
+    ERROR("cURL error %d: %s", res, *errbuf ? errbuf : curl_easy_strerror(res));
   
   /* cleanup curl stuff */ 
   curl_easy_cleanup(curl_handle);
