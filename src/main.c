@@ -66,6 +66,7 @@ struct otrtool_options {
   char *keyphrase;
   char *destdir;
   char *destfile;
+  int n_threads;
 };
 static struct otrtool_options opts = {
   .action = ACTION_INFO,
@@ -77,6 +78,7 @@ static struct otrtool_options opts = {
   .keyphrase = NULL,
   .destdir = NULL,
   .destfile = NULL,
+  .n_threads = 0,
 };
 
 static int interactive = 1; // ask questions instead of exiting
@@ -1067,18 +1069,25 @@ void decryptFile() {
   verifyFile_init(&vfy_in, 1);
   verifyFile_init(&vfy_out, 0);
 
-  const int n_wrk_max = MT ? 8 : 1;
-  thread_t wrk_id[n_wrk_max];
-  struct worker_info wrk_info[n_wrk_max];
-  int n_wrk = 1;
+  enum {
+    N_WRK_MAX = MT ? 16 : 1,
+    /* Maximum multithreading speedup should be around 6 to 7. In case the
+       number of CPUs is unknown, rather have too many threads than too few. */
+    N_WRK_DEFAULT = 8,
+  };
+  thread_t wrk_id[N_WRK_MAX];
+  struct worker_info wrk_info[N_WRK_MAX];
+  int n_wrk = N_WRK_DEFAULT;
   int i;
 
 #ifdef _SC_NPROCESSORS_ONLN
   i = sysconf(_SC_NPROCESSORS_ONLN);
   if (opts.verbosity >= VERB_DEBUG)
     fprintf(stderr, "number of CPUs: %d\n", i);
-  if (i > 0) n_wrk = MIN(i, n_wrk_max);
+  if (i > 0) n_wrk = MIN(i, N_WRK_DEFAULT);
 #endif
+  if (opts.n_threads > 0)
+    n_wrk = MIN(opts.n_threads, N_WRK_MAX);
   if (opts.verbosity >= VERB_DEBUG) {
   #if MT
     fprintf(stderr, "number of worker threads: %d\n", n_wrk);
@@ -1210,7 +1219,7 @@ int main(int argc, char *argv[]) {
 
   int i;
   int opt;
-  while ( (opt = getopt(argc, argv, "hvgifxyk:e:p:D:O:u")) != -1) {
+  while ( (opt = getopt(argc, argv, "hvgifxyk:e:p:D:O:uT:")) != -1) {
     switch (opt) {
       case 'h':
         usageError();
@@ -1254,6 +1263,9 @@ int main(int argc, char *argv[]) {
         break;
       case 'u':
         opts.unlinkmode = 1;
+        break;
+      case 'T':
+        opts.n_threads = atoi(optarg);
         break;
       default:
         usageError();
@@ -1300,7 +1312,8 @@ int main(int argc, char *argv[]) {
     else ttyfile = stdin;
   }
 
-  if (opts.action == ACTION_DECRYPT || opts.action == ACTION_VERIFY) {
+  if ((opts.action == ACTION_DECRYPT || opts.action == ACTION_VERIFY)
+      && opts.n_threads == 0) {
     errno = 0;
     nice(10);
     if (errno == 0 && opts.verbosity >= VERB_DEBUG)
