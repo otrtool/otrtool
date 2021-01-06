@@ -414,7 +414,8 @@ void showProgress(long long position, long long length) {
             progressbar, (int)(position*100/length),
             rotatingFoo[blocknum++ % 4]);
       } else {
-        fprintf(stderr, "gui> %3i\n", (int)(position*100/length));
+        fprintf(stdout, "gui> %7.3f\n", position*100.0/length);
+        fflush(stdout);
       }
       fflush(stderr);
       oldpos = position;
@@ -423,7 +424,8 @@ void showProgress(long long position, long long length) {
     if (opts.guimode == 0) {
       fputs("[========================================] 100%    \n", stderr);
     } else {
-      fputs("gui> Finished\n", stderr);
+      fputs("gui> Finished\n", stdout);
+      fflush(stdout);
     }
     oldpos = 0;
     blocknum = 0;
@@ -1296,6 +1298,8 @@ int main(int argc, char *argv[]) {
     if (i < argc)
       ERROR("Usage error: piping is not possible with multiple input files");
   }
+  if (opts.guimode && opts.destfile != NULL && strcmp(opts.destfile, "-") == 0)
+    ERROR("Usage error: options -g and -O - are incompatible");
 
   if (!isatty(2) && opts.guimode == 0) {
     logfilemode = 1;
