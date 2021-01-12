@@ -7,7 +7,9 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <sys/syscall.h>
+#ifdef __linux__
+  #include <sys/syscall.h> /* ioprio_set */
+#endif
 #include <time.h>
 
 #if _POSIX_THREADS > 0 && _POSIX_SEMAPHORES > 0
@@ -1323,9 +1325,9 @@ int main(int argc, char *argv[]) {
     if (errno == 0 && opts.verbosity >= VERB_DEBUG)
       fputs("NICE was set to 10\n", stderr);
 
-    // I am not sure if this really catches all errors
+    // Set I/O scheduling class using the Linux-specific ioprio_set syscall
     // If this causes problems, just delete the ionice-stuff
-    #ifdef __NR_ioprio_set
+    #if defined(__linux__) && defined(__NR_ioprio_set)
       if (syscall(__NR_ioprio_set, 1, getpid(), 7 | 3 << 13) == 0
            && opts.verbosity >= VERB_DEBUG)
         fputs("IONICE class was set to Idle\n", stderr);
