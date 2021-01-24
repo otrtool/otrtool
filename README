@@ -16,18 +16,19 @@ future a download manager and/or EPG could be added.
     ./otrtool.1.gz      the gzip'ed manpage
     ./LICENSE           the (rights waiver) license
 
+* `make install` will install the binary and the manpage under /usr/local
+
 == LINKS ==
 
-project homepage:       http://pyropeter.github.com/otrtool/
-github repository:      http://github.com/pyropeter/otrtool
-bugtracker:             http://github.com/pyropeter/otrtool/issues
+project homepage:       http://otrtool.github.io/otrtool/
+github repository:      http://github.com/otrtool/otrtool
+bug tracker:            http://github.com/otrtool/otrtool/issues
 
 lem's tk/perl GUI:      http://github.com/Lem/otrtool-gui
 
 == CONTACT ==
 
-E-Mail:                 com.googlemail@abi1789
-IRC:                    PyroPeter at freenode
+E-Mail:                 eshrdlu/AT/yandex/DOT/com (de, en)
 
 == REPORTING BUGS ==
 
@@ -43,16 +44,17 @@ This means that as long as /bugfixes/ increases the software gets more stable.
 == HISTORY ==
 
 In April, 2010, eddy14 reverse-engineered the otrkey-file-format and OTRs
-Client-Server-protocol. The blog post describing his work (german):
+Client-Server-protocol. The blog post describing his work (German):
+original URL (dead link):
     http://41yd.de/blog/2010/04/18/otrkey-breaker/
-He also wrote a proof-of-concept tool to decrypt OTRKEYs. I rewrote it in
-C and without licensing issues.
+mirror:
+    http://pyropeter.eu/41yd.de/blog/2010/04/18/otrkey-breaker/
+He also wrote a proof-of-concept tool to decrypt OTRKEYs. PyroPeter rewrote
+it in C and without licensing issues.
 
 == LICENSE ==
 
-otrtool uses the CC0-license.
-(This seems to place it into Public Domain in at least some countries,
-*disclaimer* but I am far from being a lawyer */disclaimer*)
+otrtool uses the CC0 license.
 
 For the license text see the LICENSE file or
 http://creativecommons.org/publicdomain/zero/1.0/legalcode

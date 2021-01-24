@@ -7,5 +7,9 @@
 * config in ~
 * twittelevision
 * pretty formatting for -i
-* upgrade to weapon of mass destruction (multiple input files)
-  * there are various little memory leaks in fetchKeypharse()
+* Valgrind-cleanliness
+* store header information in a struct rather than calling
+  queryGetParam() in various places
+* in multi-file mode:
+  * compact output (one line per file)
+  * error handling: continue with next file on non-critical errors

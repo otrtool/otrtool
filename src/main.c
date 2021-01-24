@@ -30,6 +30,8 @@
     perror(NULL); \
     exit(EXIT_FAILURE); })
 
+#define MIN(a,b) ((a)<(b)?(a):(b))
+
 #ifndef VERSION
   #define VERSION "version unknown"
 #endif
@@ -38,27 +40,50 @@
 #define MAX_RESPONSE_LENGTH 1000
 #define CREAT_MODE S_IWUSR|S_IRUSR|S_IRGRP|S_IROTH
 
-static int guimode = 0; // do not output \r and stuff
-static int interactive = 1; // ask questions instead of exiting
-
 #define VERB_INFO  1
 #define VERB_DEBUG 2
-static int verbosity = VERB_INFO;
 
 #define ACTION_INFO       1
 #define ACTION_FETCHKEY   2
 #define ACTION_DECRYPT    3
-static int action = ACTION_INFO;
+#define ACTION_VERIFY     4
+
+/* global options as supplied by the user via command-line etc. */
+struct otrtool_options {
+  int action;
+  int verbosity;
+  int guimode; // do not output \r and stuff
+  int unlinkmode;
+  char *email;
+  char *password;
+  char *keyphrase;
+  char *destdir;
+  char *destfile;
+};
+static struct otrtool_options opts = {
+  .action = ACTION_INFO,
+  .verbosity = VERB_INFO,
+  .guimode = 0,
+  .unlinkmode = 0,
+  .email = NULL,
+  .password = NULL,
+  .keyphrase = NULL,
+  .destdir = NULL,
+  .destfile = NULL,
+};
+
+static int interactive = 1; // ask questions instead of exiting
+static int logfilemode = 0; // do not output progress bar
 
 static char *email = NULL;
 static char *password = NULL;
 static char *keyphrase = NULL;
 static char *filename = NULL;
-static char *destfolder = NULL;
 static char *destfilename = NULL;
 
 static FILE *file = NULL;
 static FILE *keyfile = NULL;
+static FILE *ttyfile = NULL;
 static char *header = NULL;
 static char *info = NULL;
 
@@ -73,6 +98,7 @@ static size_t WriteMemoryCallback(void *ptr, size_t size,
           size_t nmemb, void *data) {
   size_t realsize = size * nmemb;
   struct MemoryStruct *mem = (struct MemoryStruct *)data;
+  char *newmem;
   
   // abort very long transfers
   if (mem->size + realsize > MAX_RESPONSE_LENGTH) {
@@ -80,14 +106,14 @@ static size_t WriteMemoryCallback(void *ptr, size_t size,
         ? MAX_RESPONSE_LENGTH - mem->size
         : 0;
   }
+  if (realsize < 1) return 0;
   
-  // the following line allocates one byte more than needed to allow
-  // for easy conversion to a null-terminated string
-  mem->memory = realloc(mem->memory, mem->size + realsize + 1);
-  if (mem->memory) {
+  // "If realloc() fails the original block is left untouched" (man 3 realloc)
+  newmem = realloc(mem->memory, mem->size + realsize);
+  if (newmem != NULL) {
+    mem->memory = newmem;
     memcpy(&(mem->memory[mem->size]), ptr, realsize);
     mem->size += realsize;
-    mem->memory[mem->size] = 0;
   } else return 0;
   return realsize;
 }
@@ -253,6 +279,8 @@ char * queryGetParam(char *query, char *name) {
     if (strncmp(begin, name, nameLen) == 0 && begin[nameLen] == '=') {
       begin += nameLen + 1;
       end = index(begin, '&');
+      if (end == NULL)
+        end = begin + strlen(begin);
       char *result = malloc(end - begin + 1);
       strncpy(result, begin, end - begin);
       result[end - begin] = 0;
@@ -359,12 +387,50 @@ void dumpHex(void *data_, int len) {
   free(hexrep_orig);
 }
 
+/* special case length=0 means 'finished' */
+void showProgress(long long position, long long length) {
+  static long long oldpos = 0;
+  static unsigned int blocknum = 0;
+  const char progressbar[41] = "========================================";
+  const char *rotatingFoo = "|/-\\";
+
+  if (logfilemode)
+    return;
+  if (length > 0) {
+    if (oldpos > position) {
+      oldpos = 0;
+      blocknum = 0;
+    }
+    if (position - oldpos >= 2097152 || position == 0) {
+      if (opts.guimode == 0) {
+        fprintf(stderr, "[%-40.*s] %3i%% %c\r", (int)(position*40/length),
+            progressbar, (int)(position*100/length),
+            rotatingFoo[blocknum++ % 4]);
+      } else {
+        fprintf(stderr, "gui> %3i\n", (int)(position*100/length));
+      }
+      fflush(stderr);
+      oldpos = position;
+    }
+  } else {
+    if (opts.guimode == 0) {
+      fputs("[========================================] 100%    \n", stderr);
+    } else {
+      fputs("gui> Finished\n", stderr);
+    }
+    oldpos = 0;
+    blocknum = 0;
+  }
+}
+
 // ###################### special functions ####################
 
 char * getHeader() {
   unsigned char *header = malloc(sizeof(char) * 513);
-  if (fread(header, 512, 1, file) < 1)
+  if (fread(header, 512, 1, file) < 1 && !feof(file))
     PERROR("Error reading file");
+  if (feof(file))
+    ERROR("Error: unexpected end of file");
   MCRYPT blowfish;
   blowfish = mcrypt_module_open("blowfish-compat", NULL, "ecb", NULL);
   unsigned char hardKey[] = {
@@ -383,7 +449,7 @@ char * getHeader() {
     ERROR("Corrupted header: could not find padding");
   *padding = 0;
   
-  if (verbosity >= VERB_DEBUG) {
+  if (opts.verbosity >= VERB_DEBUG) {
     fputs("\nDumping decrypted header:\n", stderr);
     dumpQuerystring((char*)header);
     fputs("\n", stderr);
@@ -424,7 +490,7 @@ void * generateBigkey(char *date) {
   
   *ptr = 0;
   
-  if (verbosity >= VERB_DEBUG) {
+  if (opts.verbosity >= VERB_DEBUG) {
     fprintf(stderr, "\nGenerated BigKey: %s\n\n", bigkey_hex);
   }
   
@@ -437,7 +503,7 @@ void * generateBigkey(char *date) {
 }
 
 char * generateRequest(void *bigkey, char *date) {
-  char *filename = queryGetParam(header, "FN");
+  char *headerFN = queryGetParam(header, "FN");
   char *thatohthing = queryGetParam(header, "OH");
   MCRYPT blowfish = mcrypt_module_open("blowfish-compat", NULL, "cbc", NULL);
   char *iv = malloc(mcrypt_enc_get_iv_size(blowfish));
@@ -460,9 +526,9 @@ char * generateRequest(void *bigkey, char *date) {
 &OH=%s\
 &A=%s\
 &P=%s\
-&D=%s", filename, thatohthing, email, password, dump);
+&D=%s", headerFN, thatohthing, email, password, dump);
   
-  if (verbosity >= VERB_DEBUG) {
+  if (opts.verbosity >= VERB_DEBUG) {
     fputs("\nGenerated request-'code':\n", stderr);
     dumpQuerystring(code);
     fputs("\n", stderr);
@@ -473,7 +539,7 @@ char * generateRequest(void *bigkey, char *date) {
   mcrypt_generic_deinit(blowfish);
   mcrypt_module_close(blowfish);
   
-  if (verbosity >= VERB_DEBUG) {
+  if (opts.verbosity >= VERB_DEBUG) {
     fputs("\nEncrypted request-'code':\n", stderr);
     dumpHex(code, 512);
     fputs("\n", stderr);
@@ -484,19 +550,19 @@ char * generateRequest(void *bigkey, char *date) {
 &AA=%s\
 &ZZ=%s", base64Encode(code, 512), email, date);
   
-  if (verbosity >= VERB_DEBUG) {
+  if (opts.verbosity >= VERB_DEBUG) {
     fprintf(stderr, "\nRequest:\n%s\n\n", result);
   }
   
   free(code);
   free(dump);
   free(iv);
-  free(filename);
+  free(headerFN);
   free(thatohthing);
   return result;
 }
 
-void * contactServer(char *request) {
+struct MemoryStruct * contactServer(char *request) {
   // http://curl.haxx.se/libcurl/c/getinmemory.html
   CURL *curl_handle;
   char errorstr[CURL_ERROR_SIZE];
@@ -524,7 +590,7 @@ void * contactServer(char *request) {
   curl_easy_setopt(curl_handle, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
   
   /* set verbosity and error message buffer */
-  if (verbosity >= VERB_DEBUG)
+  if (opts.verbosity >= VERB_DEBUG)
     curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, 1);
   curl_easy_setopt(curl_handle, CURLOPT_ERRORBUFFER, errorstr);
   
@@ -549,33 +615,34 @@ void * contactServer(char *request) {
   /* we're done with libcurl, so clean it up */ 
   curl_global_cleanup();
   
-  return (void *)chunk;
+  // null-terminate response
+  chunk->memory = realloc(chunk->memory, chunk->size + 1);
+  if (chunk->memory == NULL) PERROR("realloc");
+  chunk->memory[chunk->size] = 0;
+  return chunk;
 }
 
 char * decryptResponse(char *response, int length, void *bigkey) {
-  MCRYPT blowfish = mcrypt_module_open("blowfish-compat", NULL, "ecb", NULL);
+  MCRYPT blowfish = mcrypt_module_open("blowfish-compat", NULL, "cbc", NULL);
   
+  if (length < mcrypt_enc_get_iv_size(blowfish) || length < 8)
+    return NULL;
   length -= 8;
   
   char *result = malloc(length);
   memcpy(result, response+8, length);
   
-  mcrypt_generic_init(blowfish, bigkey, 28, NULL);
+  mcrypt_generic_init(blowfish, bigkey, 28, response);
   mdecrypt_generic(blowfish, result, length);
   mcrypt_generic_deinit(blowfish);
   mcrypt_module_close(blowfish);
-  
-  int i;
-  for (i = 0 ; i < length ; i++) {
-    result[i] ^= response[i];
-  }
   
   char *padding = strstr(result, "&D=");
   if (padding == NULL)
     ERROR("Corrupted response: could not find padding");
   *padding = 0;
   
-  if (verbosity >= VERB_DEBUG) {
+  if (opts.verbosity >= VERB_DEBUG) {
     fputs("\nDecrypted response:\n", stderr);
     dumpQuerystring(result);
     fputs("\n", stderr);
@@ -640,43 +707,47 @@ void fetchKeyphrase() {
     info = NULL;
   }
   
-  if (email == NULL) {
+  if (opts.email == NULL) {
     if (!interactive) ERROR("Email address not specified");
-    email = malloc(51);
+    opts.email = malloc(51);
     fputs("Enter your eMail-address: ", stderr);
-    if (scanf("%50s", email) < 1)
+    if (fscanf(ttyfile, "%50s", opts.email) < 1)
       ERROR("Email invalid");
-    while (getchar() != '\n');
+    while (fgetc(ttyfile) != '\n');
   }
-  if (password == NULL) {
+  email = strdup(opts.email);
+
+  if (opts.password == NULL) {
     if (!interactive) ERROR("Password not specified");
-    password = malloc(51);
+    opts.password = malloc(51);
     fputs("Enter your password: ", stderr);
-    tcgetattr(0, &ios0);
+    tcgetattr(fileno(ttyfile), &ios0);
     ios1 = ios0;
     ios1.c_lflag &= ~ECHO;
-    tcsetattr(0, TCSAFLUSH, &ios1);
-    if (scanf("%50s", password) < 1) {
+    tcsetattr(fileno(ttyfile), TCSAFLUSH, &ios1);
+    if (fscanf(ttyfile, "%50s", opts.password) < 1) {
       tcsetattr(0, TCSAFLUSH, &ios0);
       ERROR("Password invalid");
     }
-    tcsetattr(0, TCSAFLUSH, &ios0);
-    while (getchar() != '\n');
+    tcsetattr(fileno(ttyfile), TCSAFLUSH, &ios0);
+    while (fgetc(ttyfile) != '\n');
     fputc('\n', stderr);
   }
+  password = strdup(opts.password);
   
   char *bigkey = generateBigkey(date);
   char *request = generateRequest(bigkey, date);
+  free(email);
+  free(password);
   
   fputs("Trying to contact server...\n", stderr);
-  struct MemoryStruct *response =
-      (struct MemoryStruct *)contactServer(request);
+  struct MemoryStruct *response = contactServer(request);
+
+  if (response->size == 0 || response->memory == NULL) {
+    ERROR("Server sent an empty response, exiting");
+  }
   fputs("Server responded.\n", stderr);
   
-  // null-terminate response (memory for null-byte _was_ allocated
-  // in WriteMemoryCallback, I checked twice :-)
-  response->memory[response->size] = 0;
-
   // skip initial whitespace
   char *message = response->memory;
   message += strspn(message, " \t\n");
@@ -730,10 +801,11 @@ void openFile() {
   if (file == NULL)
     PERROR("Error opening file");
   
-  char magic[11];
-  magic[10] = 0;
-  if (fread(magic, 10, 1, file) < 1)
+  char magic[11] = { 0 };
+  if (fread(magic, 10, 1, file) < 1 && !feof(file))
     PERROR("Error reading file");
+  if (feof(file))
+    ERROR("Error: unexpected end of file");
   if (strcmp(magic, "OTRKEYFILE") != 0)
     ERROR("Wrong file format");
   
@@ -762,7 +834,7 @@ void verifyFile_init(vfy_t *vfy, int input) {
     hash_hex[2*i+1] = hash_hex[3*i+1];
   }
   hash_hex[32] = 0;
-  if (verbosity >= VERB_DEBUG)
+  if (opts.verbosity >= VERB_DEBUG)
     fprintf(stderr, "Checking %s against MD5 sum: %s\n",
       vfy->input?"input":"output", hash_hex);
   hash = hex2bin(hash_hex);
@@ -792,22 +864,59 @@ void verifyFile_final(vfy_t *vfy) {
   }
 }
 
+void verifyOnly() {
+  vfy_t vfy;
+  size_t n;
+  static char buffer[65536];
+  unsigned long long length;
+  unsigned long long position;
+
+  length = atoll(queryGetParam(header, "SZ")) - 522;
+  fputs("Verifying otrkey...\n", stderr);
+  verifyFile_init(&vfy, 1);
+  for (position = 0; position < length; position += n) {
+    showProgress(position, length);
+    n = fread(buffer, 1, MIN(length - position, sizeof(buffer)), file);
+    if (n == 0 || ferror(file)) break;
+    verifyFile_data(&vfy, buffer, n);
+  }
+  if (position < length) {
+    if (!feof(file)) PERROR("fread");
+    if (!logfilemode) fputc('\n', stderr);
+    fputs("file is too short\n", stderr);
+  }
+  else
+    showProgress(1, 0);
+
+  if (fread(buffer, 1, 1, file) > 0)
+    fputs("file contains trailing garbage\n", stderr);
+  else if (!feof(file))
+    PERROR("fread");
+  verifyFile_final(&vfy);
+  fputs("file is OK\n", stderr);
+}
+
 void decryptFile() {
   int fd;
   char *headerFN;
   struct stat st;
   FILE *destfile;
-  
-  if (destfolder != NULL) {
+
+  if (opts.destfile == NULL) {
     headerFN = queryGetParam(header, "FN");
-    destfilename = malloc(strlen(destfolder) + strlen(headerFN) + 2);
-    strcpy(destfilename, destfolder);
-    destfilename[strlen(destfolder)] = '/';
-    strcpy(destfilename + strlen(destfolder) + 1, headerFN);
+    if (opts.destdir != NULL) {
+      destfilename = malloc(strlen(opts.destdir) + strlen(headerFN) + 2);
+      strcpy(destfilename, opts.destdir);
+      strcat(destfilename, "/");
+      strcat(destfilename, headerFN);
+      free(headerFN);
+    }
+    else {
+      destfilename = headerFN;
+    }
   }
-  
-  if (destfilename == NULL) {
-    destfilename = queryGetParam(header, "FN");
+  else {
+    destfilename = strdup(opts.destfile);
   }
   
   if (strcmp(destfilename, "-") == 0) {
@@ -821,8 +930,8 @@ void decryptFile() {
       if (!interactive) ERROR("Destination file exists: %s", destfilename);
       fprintf(stderr, "Destination file exists: %s\nType y to overwrite: ",
         destfilename);
-      if (getchar() != 'y') exit(EXIT_FAILURE);
-      while (getchar() != '\n');
+      if (fgetc(ttyfile) != 'y') exit(EXIT_FAILURE);
+      while (fgetc(ttyfile) != '\n');
       fd = open(destfilename, O_WRONLY|O_TRUNC, 0);
     }
     else
@@ -841,20 +950,17 @@ void decryptFile() {
   
   unsigned long long length = atoll(queryGetParam(header, "SZ")) - 522;
   unsigned long long position = 0;
-  unsigned int blocknum;
   size_t readsize;
   size_t writesize;
   static char buffer[65536];
-  
-  char progressbar[41];
-  const char *rotatingFoo = "|/-\\";
   vfy_t vfy_in, vfy_out;
   
   verifyFile_init(&vfy_in, 1);
   verifyFile_init(&vfy_out, 0);
   
-  blocknum = 0;
   while (position < length) {
+    showProgress(position, length);
+
     if (length - position >= sizeof(buffer)) {
       readsize = fread(buffer, 1, sizeof(buffer), file);
     } else {
@@ -877,26 +983,9 @@ void decryptFile() {
       PERROR("Error writing to destination file");
     
     position += writesize;
-    if (position % 2097152 == 0) {
-      if (guimode == 0) {
-        memset(progressbar, ' ', 40);
-        memset(progressbar, '=', (position*40)/length);
-        progressbar[40] = 0;
-        fprintf(stderr, "[%s] %3lli%% %c\r", progressbar, (position*100)/length,
-          rotatingFoo[blocknum++ % 4]);
-      } else {
-        fprintf(stderr, "gui> %3lli\n", (position*100)/length);
-      }
-      fflush(stderr);
-    }
   }
-  
-  if (guimode == 0) {
-    fputs("[========================================] 100%    \n", stderr);
-  } else {
-    fputs("gui> Finished\n", stderr);
-  }
-  
+  showProgress(1, 0);
+
   verifyFile_final(&vfy_in);
   verifyFile_final(&vfy_out);
   fputs("OK checksums from header match\n", stderr);
@@ -906,89 +995,30 @@ void decryptFile() {
   
   if (fclose(destfile) != 0)
     PERROR("Error closing destination file.");
-  
-  free(key);
-}
 
-void usageError() {
-  fputs("\n"
-    "Usage: otrtool [-h] [-v] [-i|-f|-x] [-k <keyphrase>] [-e <email> -p <password>]\n"
-    "               [-D <destfolder>] [-O <destfile>] <otrkey-file>\n"
-    "\n"
-    "MODES OF OPERATION\n"
-    "  -i | Display information about file (default action)\n"
-    "  -f | Fetch keyphrase for file\n"
-    "  -x | Decrypt file\n"
-    "\n"
-    "FREQUENTLY USED ARGUMENTS\n"
-    "  -k | Do not fetch keyphrase, use this one\n"
-    "  -D | Output folder\n"
-    "  -O | Output file (overrides -D)\n"
-    "\n"
-    "See otrtool(1) for further information\n", stderr);
-}
-
-int main(int argc, char *argv[]) {
-  fputs("OTR-Tool, " VERSION "\n", stderr);
-  
-  int opt;
-  while ( (opt = getopt(argc, argv, "hvgifxk:e:p:D:O:")) != -1) {
-    switch (opt) {
-      case 'h':
-        usageError();
-        exit(EXIT_SUCCESS);
-        break;
-      case 'v':
-        verbosity = VERB_DEBUG;
-        break;
-      case 'g':
-        guimode = 1;
-        interactive = 0;
-        break;
-      case 'i':
-        action = ACTION_INFO;
-        break;
-      case 'f':
-        action = ACTION_FETCHKEY;
-        break;
-      case 'x':
-        action = ACTION_DECRYPT;
-        break;
-      case 'k':
-        keyphrase = optarg;
-        break;
-      case 'e':
-        email = optarg;
-        break;
-      case 'p':
-        password = optarg;
-        break;
-      case 'D':
-        destfolder = optarg;
-        break;
-      case 'O':
-        destfilename = malloc(strlen(optarg) + 1);
-        strcpy(destfilename, optarg);
-        break;
-      default:
-        usageError();
-        exit(EXIT_FAILURE);
+  if (opts.unlinkmode) {
+    if (strcmp(filename, "-") != 0 &&
+        stat(filename, &st) == 0 && S_ISREG(st.st_mode) &&
+        strcmp(destfilename, "-") != 0 &&
+        stat(destfilename, &st) == 0 && S_ISREG(st.st_mode)) {
+      if (unlink(filename) != 0)
+        PERROR("Cannot delete input file");
+      else
+        fputs("info: input file has been deleted\n", stderr);
+    }
+    else {
+      fputs("Warning: Not deleting input file (input or "
+          "output is not a regular file)\n", stderr);
     }
   }
   
-  if (optind >= argc) {
-    fprintf(stderr, "Missing argument: otrkey-file\n");
-    usageError();
-    exit(EXIT_FAILURE);
-  }
-  
-  filename = argv[optind];
-  
-  if (!isatty(0)) interactive = 0;
-  openFile();
-  keycache_open();
-  
-  switch (action) {
+  free(key);
+  free(destfilename);
+}
+
+void processFile() {
+  int storeKeyphrase;
+  switch (opts.action) {
     case ACTION_INFO:
       // TODO: output something nicer than just the querystring
       dumpQuerystring(header);
@@ -997,36 +1027,173 @@ int main(int argc, char *argv[]) {
       fetchKeyphrase();
       break;
     case ACTION_DECRYPT:
-      if (keyphrase == NULL) {
+      storeKeyphrase = 1;
+      if (opts.keyphrase == NULL) {
+        storeKeyphrase = 0;
         keyphrase = keycache_get(queryGetParam(header, "FH"));
         if (keyphrase)
           fprintf(stderr, "Keyphrase from cache: %s\n", keyphrase);
         else
           fetchKeyphrase();
       }
-      
-      errno = 0;
-      nice(10);
-      if (errno == 0 && verbosity >= VERB_DEBUG)
-        fputs("NICE was set to 10\n", stderr);
-      
-      // I am not sure if this really catches all errors
-      // If this causes problems, just delete the ionice-stuff
-      #ifdef __NR_ioprio_set
-        if (syscall(__NR_ioprio_set, 1, getpid(), 7 | 3 << 13) == 0
-             && verbosity >= VERB_DEBUG)
-          fputs("IONICE class was set to Idle\n", stderr);
-      #endif
-      
+      else {
+        keyphrase = strdup(opts.keyphrase);
+      }
       decryptFile();
+      if (storeKeyphrase)
+        keycache_put(queryGetParam(header, "FH"), keyphrase);
+      break;
+    case ACTION_VERIFY:
+      verifyOnly();
       break;
   }
+}
+
+void usageError() {
+  fputs("\n"
+    "Usage: otrtool [-h] [-v] [-i|-f|-x|-y] [-u]\n"
+    "               [-k <keyphrase>] [-e <email>] [-p <password>]\n"
+    "               [-D <destfolder>] [-O <destfile>]\n"
+    "               <otrkey-file1> [<otrkey-file2> ... [<otrkey-fileN>]]\n"
+    "\n"
+    "MODES OF OPERATION\n"
+    "  -i | Display information about file (default action)\n"
+    "  -f | Fetch keyphrase for file\n"
+    "  -x | Decrypt file\n"
+    "  -y | Verify only\n"
+    "\n"
+    "FREQUENTLY USED OPTIONS\n"
+    "  -k | Do not fetch keyphrase, use this one\n"
+    "  -D | Output folder\n"
+    "  -O | Output file (overrides -D)\n"
+    "  -u | Delete otrkey-files after successful decryption\n"
+    "\n"
+    "See otrtool(1) for further information\n", stderr);
+}
+
+int main(int argc, char *argv[]) {
+  fputs("OTR-Tool, " VERSION "\n", stderr);
+
+  int i;
+  int opt;
+  while ( (opt = getopt(argc, argv, "hvgifxyk:e:p:D:O:u")) != -1) {
+    switch (opt) {
+      case 'h':
+        usageError();
+        exit(EXIT_SUCCESS);
+        break;
+      case 'v':
+        opts.verbosity = VERB_DEBUG;
+        break;
+      case 'g':
+        opts.guimode = 1;
+        interactive = 0;
+        break;
+      case 'i':
+        opts.action = ACTION_INFO;
+        break;
+      case 'f':
+        opts.action = ACTION_FETCHKEY;
+        break;
+      case 'x':
+        opts.action = ACTION_DECRYPT;
+        break;
+      case 'y':
+        opts.action = ACTION_VERIFY;
+        break;
+      case 'k':
+        opts.keyphrase = optarg;
+        break;
+      case 'e':
+        opts.email = strdup(optarg);
+        memset(optarg, 'x', strlen(optarg));
+        break;
+      case 'p':
+        opts.password = strdup(optarg);
+        memset(optarg, 'x', strlen(optarg));
+        break;
+      case 'D':
+        opts.destdir = optarg;
+        break;
+      case 'O':
+        opts.destfile = optarg;
+        break;
+      case 'u':
+        opts.unlinkmode = 1;
+        break;
+      default:
+        usageError();
+        exit(EXIT_FAILURE);
+    }
+  }
+  if (opts.verbosity >= VERB_DEBUG) {
+    fputs("command line: ", stderr);
+    for (i = 0; i < argc; ++i) {
+      fputs(argv[i], stderr);
+      fputc((i == argc - 1) ? '\n' : ' ', stderr);
+    }
+  }
   
-  free(header);
-  free(destfilename);
-  
-  if (fclose(file) != 0)
-    PERROR("Error closing file. I don't care, I was going to exit anyway");
+  if (optind >= argc) {
+    fprintf(stderr, "Missing argument: otrkey-file\n");
+    usageError();
+    exit(EXIT_FAILURE);
+  }
+  if (argc > optind + 1) {
+    if (opts.destfile != NULL && strcmp(opts.destfile, "-") == 0) {
+      i = 0;
+    }
+    else for (i = optind; i < argc; i++) {
+      if (strcmp(argv[i], "-") == 0)
+        break;
+    }
+    if (i < argc)
+      ERROR("Usage error: piping is not possible with multiple input files");
+  }
+
+  if (!isatty(2) && opts.guimode == 0) {
+    logfilemode = 1;
+    interactive = 0;
+  }
+  if (interactive) {
+    if (!isatty(0)) {
+      ttyfile = fopen("/dev/tty", "r");
+      if (ttyfile == NULL) {
+        if (opts.verbosity >= VERB_DEBUG) perror("open /dev/tty");
+        interactive = 0;
+      }
+    }
+    else ttyfile = stdin;
+  }
+
+  if (opts.action == ACTION_DECRYPT || opts.action == ACTION_VERIFY) {
+    errno = 0;
+    nice(10);
+    if (errno == 0 && opts.verbosity >= VERB_DEBUG)
+      fputs("NICE was set to 10\n", stderr);
+
+    // I am not sure if this really catches all errors
+    // If this causes problems, just delete the ionice-stuff
+    #ifdef __NR_ioprio_set
+      if (syscall(__NR_ioprio_set, 1, getpid(), 7 | 3 << 13) == 0
+           && opts.verbosity >= VERB_DEBUG)
+        fputs("IONICE class was set to Idle\n", stderr);
+    #endif
+  }
+  if (opts.action == ACTION_FETCHKEY || opts.action == ACTION_DECRYPT) {
+    keycache_open();
+  }
+
+  for (i = optind; i < argc; i++) {
+    filename = argv[i];
+    if (argc > optind + 1)
+      fprintf(stderr, "\n==> %s <==\n", filename);
+    openFile();
+    processFile();
+    if (fclose(file) != 0)
+      PERROR("Error closing file");
+    free(header);
+  }
   
   exit(EXIT_SUCCESS);
 }

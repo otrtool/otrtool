@@ -11,13 +11,13 @@
 SHELL = /bin/sh
 .SUFFIXES:
 .SUFFIXES: .c .o
+PREFIX ?= /usr/local
 
-DVERSION = v1.1.2
-VERSION := $(shell git describe --tags --long --dirty 2>/dev/null || echo "$(DVERSION)")
+DVERSION = v1.2.1
+VERSION ?= $(shell git describe --tags --long --dirty 2>/dev/null || echo "$(DVERSION)")
 
-CC = gcc
-CFLAGS = -O3 -Wall -Wextra -g -DVERSION='"$(VERSION)"'
-LDFLAGS = -lmcrypt -lcurl
+CFLAGS += -O3 -Wall -Wextra -g -DVERSION='"$(VERSION)"'
+LDFLAGS += -lmcrypt -lcurl
 
 # large file support
 CFLAGS += $(shell getconf LFS_CFLAGS)
@@ -28,7 +28,7 @@ MAIN = otrtool
 
 OBJS = $(SRCS:.c=.o)
 
-.PHONY: depend clean
+.PHONY: depend clean install
 
 all:    $(MAIN) otrtool.1.gz
 	@echo Done.
@@ -37,7 +37,7 @@ otrtool.1.gz:
 	gzip -c doc/otrtool.1 > otrtool.1.gz
 
 $(MAIN): $(OBJS)
-	$(CC) $(CFLAGS) -o $(MAIN) $(OBJS) $(LDFLAGS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $(MAIN) $(OBJS) $(LDFLAGS)
 	@echo Build successful
 
 # this is a suffix replacement rule for building .o's from .c's
@@ -45,10 +45,16 @@ $(MAIN): $(OBJS)
 # the rule(a .c file) and $@: the name of the target of the rule (a .o file) 
 # (see the gnu make manual section about automatic variables)
 .c.o:
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 clean:
 	$(RM) $(OBJS) $(MAIN) $(MAIN).1.gz
+
+install: $(MAIN) $(MAIN).1.gz
+	install -m 0755 -d $(DESTDIR)$(PREFIX)/bin
+	install -m 0755 $(MAIN) $(DESTDIR)$(PREFIX)/bin/
+	install -m 0755 -d $(DESTDIR)$(PREFIX)/man/man1
+	install -m 0644 $(MAIN).1.gz $(DESTDIR)$(PREFIX)/man/man1/
 
 depend: $(SRCS)
 	makedepend -w70 -Y $^

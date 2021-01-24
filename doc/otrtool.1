@@ -1,4 +1,4 @@
-.TH OTRTOOL 1 2010-09-11 ZOMG "otrtool Manual"
+.TH OTRTOOL 1 2015-10-17 ZOMG "otrtool Manual"
 
 .\" ********************************************************************
 .\" ********************************************************************
@@ -8,21 +8,22 @@ otrtool \- decrypts otrkeys from onlinetvrecorder.com
 .SH SYNOPSIS
 
 .B otrtool
-.RB \-i
-.IR otrkey-file
+.B \-i
+.I otrkey-files
 
 .br
 .B otrtool
-.RB \-f
+.B \-f
 .RB [\| \-e
 .IR email \|]
 .RB [\| \-p
 .IR password \|]
-.IR otrkey-file
+.I otrkey-files
 
 .br
 .B otrtool
-.RB \-x
+.B \-x
+.RB [\| \-u \|]
 .RB [\| \-e
 .IR email \|]
 .RB [\| \-p
@@ -35,8 +36,13 @@ otrtool \- decrypts otrkeys from onlinetvrecorder.com
 .IR output-folder \|]
 .RB [\| \-O
 .IR output-file \|]
-.IR otrkey-file
+.I otrkey-files
 .RE
+
+.br
+.B otrtool
+.B \-y
+.I otrkey-files
 
 .br
 .B otrtool
@@ -45,9 +51,10 @@ otrtool \- decrypts otrkeys from onlinetvrecorder.com
 
 .\" ********************************************************************
 .\" ********************************************************************
-.SH DESCRYPTION
+.SH DESCRIPTION
 .B otrtool
-aims to provide an open source tool to deal with otrkey\-files from onlinetvrecoder.com. At the moment it is able to decrypt them, in the future a download manager and/or EPG could be added.
+aims to provide an open source tool to deal with otrkey\-files from onlinetvrecoder.com.
+.\"At the moment it is able to decrypt them, in the future a download manager and/or EPG could be added.
 
 
 .\" ********************************************************************
@@ -60,18 +67,24 @@ aims to provide an open source tool to deal with otrkey\-files from onlinetvreco
 .TP
 .B \-i
 Display information about
-.I otrkey-file
+.I otrkey-files
 
 .TP
 .B \-f
 Fetch keyphrase for
-.I otrkey-file
+.I otrkey-files
 
 .TP
 .B \-x
 Fetch keyphrase for
-.I otrkey-file
-and decrypt it
+.I otrkey-files
+and decrypt them
+
+.TP
+.B \-y
+Verify the integrity of
+.I otrkey-files
+without decrypting
 
 
 .\" ********************************************************************
@@ -107,6 +120,13 @@ Save decrypted file to
 This overrides
 .B -D
 
+.TP
+.BI \-u
+Delete (unlink)
+.I otrkey-files
+after successful decryption.
+This option is only applied if both input and output are regular files.
+
 
 .\" ********************************************************************
 .SS "Fetch options"
@@ -115,7 +135,7 @@ This overrides
 .BI \-e \ email
 Authenticate using
 .I email
-as eMail address
+as e-mail address
 
 .TP
 .BI \-p \ password
@@ -126,27 +146,48 @@ as password
 
 .\" ********************************************************************
 .\" ********************************************************************
+.SH "EXAMPLES"
+
+Decrypt a single otrkey file.
+If you have not decrypted that file before, you will be asked for your
+username and password:
+.PP
+.nf
+.RS
+.B otrtool \-x \fRsomefile.otrkey
+.RE
+.fi
+
+.PP
+Decrypt several otrkey files in your "Downloads" directory and delete each of
+them afterwards. Output files will be stored in your "Movies" directory:
+.PP
+.nf
+.RS
+.B otrtool \-x \-u \-D \fRMovies Downloads/*.otrkey
+.RE
+.fi
+
+
+.\" ********************************************************************
+.\" ********************************************************************
 .SH "CONTACT"
 
 .TP
 .B Homepage:
-http://pyropeter.github.com/otrtool/
+http://otrtool.github.io/otrtool/
 
 .TP
 .B Repository:
-http://github.com/pyropeter/otrtool
+http://github.com/otrtool/otrtool
 
 .TP
-.B Bugtracker:
-http://github.com/pyropeter/otrtool/issues
+.B Bug tracker:
+http://github.com/otrtool/otrtool/issues
 
 .TP
-.B MAIL:
-googlemail.com@abi1789 (use your brain!)
-
-.TP
-.B IRC:
-PyroPeter at freenode
+.B E-mail:
+eshrdlu AT yandex DOT com (de, en)
 
 .RE
 
