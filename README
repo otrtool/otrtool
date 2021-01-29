@@ -1,6 +1,6 @@
 otrtool aims to provide an open source tool to deal with otrkey-files from
-onlinetvrecoder.com. At the moment it is able to decrypt them, in the
-future a download manager and/or EPG could be added.
+onlinetvrecorder.com. It can decrypt them using keys it fetches from OTR's
+servers while authenticating with user-supplied login credentials.
 
 == DEPENDENCIES ==
 
@@ -9,14 +9,27 @@ future a download manager and/or EPG could be added.
 
 == BUILDING ==
 
-* execute `make`
+* execute `make` (or `gmake` where GNU Make is not the default)
 
 * Copy the following files to the places they belong:
     ./otrtool           the main binary
     ./otrtool.1.gz      the gzip'ed manpage
     ./LICENSE           the (rights waiver) license
 
-* `make install` will install the binary and the manpage under /usr/local
+* `make install` will install the binary and the manpage under /usr/local.
+  Use `make install PREFIX=...` to install elsewhere.
+
+* If you didn't install libmcrypt and libcurl in the usual places,
+  specify where the headers and libraries are:
+  `CFLAGS="-I/path/to/include" LDFLAGS="-L/path/to/lib" make`
+
+== PORTABILITY ==
+
+* otrtool is developed and tested primarily under GNU/Linux.
+  If it turns out not to be portable to your unix-like operating system
+  of choice, please file a bug report.
+
+* The Makefile is not portable and relies on GNU Make features.
 
 == LINKS ==
 
