@@ -13,7 +13,7 @@ SHELL = /bin/sh
 .SUFFIXES: .c .o
 PREFIX ?= /usr/local
 
-DVERSION = v1.2.1
+DVERSION = v1.3.0
 VERSION ?= $(shell git describe --tags --long --dirty 2>/dev/null || echo "$(DVERSION)")
 
 CFLAGS += -O3 -Wall -Wextra -g -pthread -DVERSION='"$(VERSION)"'
