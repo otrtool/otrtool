@@ -2,16 +2,13 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <errno.h>
+#include <time.h>
+
 #include <unistd.h>
 #include <termios.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <errno.h>
-#ifdef __linux__
-  #include <sys/syscall.h> /* ioprio_set */
-#endif
-#include <time.h>
-
 #if _POSIX_THREADS > 0 && _POSIX_SEMAPHORES > 0
   #include <pthread.h>
   #include <semaphore.h>
@@ -20,11 +17,13 @@
   #define MT 0
 #endif
 
-#include <mcrypt.h>
-#include "md5.h"
+#ifdef __linux__
+  #include <sys/syscall.h> /* ioprio_set */
+#endif
 
 #include <curl/curl.h>
-#include <curl/easy.h>
+#include <mcrypt.h>
+#include "md5.h"
 
 #define ERROR(...) \
   ({fprintf(stderr, "\n"); \
@@ -47,20 +46,14 @@
 
 #define LINE_LENGTH 80
 #define MAX_RESPONSE_LENGTH 1000
-#define CREAT_MODE S_IWUSR|S_IRUSR|S_IRGRP|S_IROTH
-
-#define VERB_INFO  1
-#define VERB_DEBUG 2
-
-#define ACTION_INFO       1
-#define ACTION_FETCHKEY   2
-#define ACTION_DECRYPT    3
-#define ACTION_VERIFY     4
+#define CREAT_MODE (S_IWUSR|S_IRUSR|S_IRGRP|S_IROTH)
 
 /* global options as supplied by the user via command-line etc. */
 struct otrtool_options {
-  int action;
-  int verbosity;
+  enum { ACTION_INFO, ACTION_FETCHKEY, ACTION_DECRYPT, ACTION_VERIFY }
+      action;
+  enum { VERB_INFO, VERB_DEBUG }
+      verbosity;
   int guimode; // do not output \r and stuff
   int unlinkmode;
   char *email;
@@ -83,6 +76,7 @@ static struct otrtool_options opts = {
   .n_threads = 0,
 };
 
+/* global variables */
 static int interactive = 1; // ask questions instead of exiting
 static int logfilemode = 0; // do not output progress bar
 
