@@ -5,7 +5,10 @@ layout: default
 
 otrtool
 =======
-otrtool aims to provide an open source tool to deal with .otrkey files from [OnlineTvRecorder.com](http://onlinetvrecorder.com/).
+
+otrtool aims to provide an open source tool to deal with .otrkey files from
+[OnlineTvRecorder.com](http://onlinetvrecorder.com/).
+
 
 Produces nice output!
 ---------------------
@@ -21,6 +24,7 @@ Produces nice output!
     Decrypting and verifying...
     [========================================] 100%
     OK checksums from header match
+
 
 How to install from source
 --------------------------
@@ -48,6 +52,7 @@ After that, copy the following files to the places they belong:
 * `./otrtool.1.gz` (the gzip'ed manpage)
 * `./LICENSE` (the (rights waiver) license)
 
+
 Packages for your distribution of choice
 ----------------------------------------
 
@@ -59,6 +64,7 @@ If your package is not listed, please contact me!
 
 ### pkgsrc for NetBSD et al.
 * [wip/otrtool](http://pkgsrc.se/wip/otrtool)
+
 
 Changelog
 ---------
@@ -93,22 +99,34 @@ This list will only contain major and minor updates, no bugfix releases.
 * `otrtool -h` slimmed down to "important" commands
 * (various bugfixes)
 
+
 Reporting Bugs
 --------------
 
-For bug reports please run otrtool with the "-v"-option. Note that the output contains personal data like your email/password, and/or hashes of them.
+For bug reports please run otrtool with the "-v"-option. Note that the output
+contains personal data like your email/password, and/or hashes of them.
+
 
 History
 -------
 
-In April, 2010, eddy14 reverse-engineered the otrkey file format and OTR's client-server protocol. He described his work in a German [blog post](http://pyropeter.eu/41yd.de/blog/2010/04/18/otrkey-breaker/). He also wrote a proof-of-concept tool to decrypt OTRKEYs. PyroPeter rewrote it in C and without licensing issues.
+In April, 2010, eddy14 reverse-engineered the otrkey file format and OTR's
+client-server protocol. He described his work in a German
+[blog post](http://pyropeter.eu/41yd.de/blog/2010/04/18/otrkey-breaker/).
+He also wrote a proof-of-concept tool to decrypt OTRKEYs.
+PyroPeter rewrote it in C and without licensing issues.
 In February, 2015, PyroPeter handed over maintenance to eshrdlu.
+
 
 Copying
 -------
 
-otrtool uses the Creative Commons [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/) rights waiver / license, which basically means you are free to do *anything* with otrtool.
-The full text is included in the `LICENSE` file within the source tree.
+otrtool uses the Creative Commons
+[CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/)
+rights waiver / license, which basically means you are free to do *anything*
+with otrtool. The full text is included in the `LICENSE` file within the
+source tree.
+
 
 Links
 -----
@@ -121,7 +139,8 @@ Links
 
 * [Lem's Perl/Tk GUI](https://github.com/Lem/otrtool-gui)
 
+
 Contact
 -------
 
-    E-Mail:                 eshrdlu/AT/yandex/DOT/com
+    E-Mail: eshrdlu/AT/yandex/DOT/com
