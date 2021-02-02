@@ -1,13 +1,13 @@
 ---
-title: Home
+title: otrtool &ndash; open source otrkey decoder
 layout: default
 ---
 
 otrtool
 =======
 
-otrtool aims to provide an open source tool to deal with .otrkey files from
-[OnlineTvRecorder.com](http://onlinetvrecorder.com/).
+otrtool aims to provide an open source tool to deal with otrkey-files from
+[OnlineTvRecorder.com](https://www.onlinetvrecorder.com/).
 
 
 Produces nice output!
@@ -63,13 +63,18 @@ If your package is not listed, please contact me!
 * [AUR/otrtool-git](https://aur.archlinux.org/packages/otrtool-git/)
 
 ### pkgsrc for NetBSD et al.
-* [wip/otrtool](http://pkgsrc.se/wip/otrtool)
+* [wip/otrtool](https://pkgsrc.se/wip/otrtool)
 
 
 Changelog
 ---------
 
 This list will only contain major and minor updates, no bugfix releases.
+
+### 1.3.0
+2021-01-30
+
+* multi-threaded decryption
 
 ### 1.2.0
 2016-03-01
