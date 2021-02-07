@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdarg.h>
 #include <errno.h>
 #include <time.h>
 
@@ -124,6 +125,13 @@ static size_t WriteMemoryCallback(void *ptr, size_t size,
 }
 
 // ######################## generic functions ####################
+
+void perrorf(const char *fmt, ...) {
+  int errsv = errno;
+  va_list ap; va_start(ap, fmt); vfprintf(stderr, fmt, ap); va_end(ap);
+  fputs(": ", stderr);
+  errno = errsv; perror(NULL);
+}
 
 char * bin2hex(void *data_, int len) {
   unsigned char *data = data_;
@@ -1303,9 +1311,11 @@ int main(int argc, char *argv[]) {
   }
   if (interactive) {
     if (!isatty(0)) {
-      ttyfile = fopen("/dev/tty", "r");
+      const char *ttyname = ctermid(NULL); /* usually /dev/tty */
+      ttyfile = fopen(ttyname, "r");
       if (ttyfile == NULL) {
-        if (opts.verbosity >= VERB_DEBUG) perror("open /dev/tty");
+        if (opts.verbosity >= VERB_DEBUG)
+          perrorf("cannot open TTY: %s", ttyname);
         interactive = 0;
       }
     }
