@@ -198,11 +198,16 @@ them afterwards. Output files will be stored in your "Movies" directory:
 .\" ********************************************************************
 .\" ********************************************************************
 .SH "FILES"
+Where multiple file names are given, the first existing file is used.
+If none exists, the first alternative is used.
+$XDG_DATA_HOME defaults to ~/.local/share.
 
 .TP
 .I ~/.otrkey_cache
+.TQ
+.I $XDG_DATA_HOME/otrtool/otrkey_cache
 Key cache. Currently, the only way to disable this feature is to disallow
-\fBotrtool\fR to read and/or write this file by using \fBchmod\fR(1)
+\fBotrtool\fR to read or write this file by using \fBchmod\fR(1)
 or similar means.
 
 

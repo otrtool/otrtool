@@ -89,6 +89,8 @@ static char *destfilename = NULL;
 
 static FILE *file = NULL;
 static FILE *keyfile = NULL;
+static char *keyfilename = NULL;
+static char *keyfileshortname = NULL; /* home dir is abbreviated to ~ */
 static FILE *ttyfile = NULL;
 static char *header = NULL;
 static char *info = NULL;
@@ -714,14 +716,66 @@ char * decryptResponse(char *response, int length, void *bigkey) {
 }
 
 void keycache_open() {
-  char *home, *keyfilename;
-  
-  if ((home = getenv("HOME")) == NULL) return;
-  keyfilename = malloc(strlen(home) + 20);
-  strcpy(keyfilename, home);
-  strcat(keyfilename, "/.otrkey_cache");
-  keyfile = fopen(keyfilename, "a+");
-  free(keyfilename);
+  char *home = NULL, *data_home = NULL, *pch;
+  char *filenames[2] = { NULL, NULL };
+  const int n_filenames = 2;
+  int i;
+
+  /* Build home and data home strings */
+  if ((pch = getenv("HOME")) != NULL && strlen(pch) > 0)
+    home = strdup(pch);
+  if ((pch = getenv("XDG_DATA_HOME")) != NULL && strlen(pch) > 0)
+    data_home = strdup(pch);
+  if (data_home == NULL && home != NULL
+      && (data_home = malloc(strlen(home) + 14)) != NULL) {
+    strcpy(data_home, home);
+    strcat(data_home, "/.local/share");
+  }
+  if (!home && !data_home)
+    fputs("warning: neither HOME nor XDG_DATA_HOME is set\n", stderr);
+
+  /* Make array of file name alternatives */
+  if (home && (filenames[0] = malloc(strlen(home) + 15)) != NULL) {
+    strcpy(filenames[0], home);
+    strcat(filenames[0], "/.otrkey_cache");
+  }
+  if (data_home && (filenames[1] = malloc(strlen(data_home) + 22)) != NULL) {
+    strcpy(filenames[1], data_home);
+    strcat(filenames[1], "/otrtool/otrkey_cache");
+  }
+
+  /* Choose the first existing cache file alternative */
+  keyfilename = NULL;
+  for (i=0; i < n_filenames; ++i) {
+    if (filenames[i] && access(filenames[i], F_OK) == 0) break;
+  }
+  if (i == n_filenames) i = 0; /* choose default */
+  if (filenames[i]) keyfilename = strdup(filenames[i]);
+
+  if (keyfilename) {
+    /* Construct abbreviated key file name (replace HOME with ~) */
+    if (home && strncmp(keyfilename, home, strlen(home)) == 0) {
+      if ((pch = malloc(strlen(keyfilename)-strlen(home)+2)) == NULL)
+        PERROR("malloc");
+      strcpy(pch, "~");
+      strcat(pch, keyfilename+strlen(home));
+      keyfileshortname = pch;
+    }
+    else {
+      if ((keyfileshortname = strdup(keyfilename)) == NULL) PERROR("strdup");
+    }
+    if(opts.verbosity >= VERB_DEBUG)
+      fprintf(stderr, "key cache is at %s\n", keyfileshortname);
+
+    /* Open key cache */
+    keyfile = fopen(keyfilename, "a+");
+    if (keyfile == NULL && opts.verbosity >= VERB_DEBUG)
+      perrorf("cannot open key cache: %s", keyfilename);
+  }
+
+  for (i=0; i < n_filenames; ++i) free(filenames[i]);
+  free(home);
+  free(data_home);
 }
 
 char *keycache_get(const char *fh) {
@@ -755,7 +809,7 @@ void keycache_put(const char *fh, const char *keyphrase) {
   if (fprintf(keyfile, "%s\t%s\t# %s\n", fh, keyphrase, fn) < 0)
     PERROR("fprintf");
   fflush(keyfile);
-  fputs("info: saved keyphrase to ~/.otrkey_cache\n", stderr);
+  fprintf(stderr, "info: saved keyphrase to %s\n", keyfileshortname);
 }
 
 void fetchKeyphrase() {
