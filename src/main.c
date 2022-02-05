@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <sys/random.h>
 #ifdef __linux__
   #include <sys/syscall.h> /* ioprio_set */
 #endif
@@ -569,7 +570,11 @@ char * generateRequest(void *bigkey, char *date) {
   char *dump = malloc(513);
   char *result = malloc(1024); // base64-encoded code is 680 bytes
   
-  memset(iv, 0x42, mcrypt_enc_get_iv_size(blowfish));
+  // use a fresh, random iv for each request
+  if ((ssize_t) mcrypt_enc_get_iv_size(blowfish) != getrandom(iv, mcrypt_enc_get_iv_size(blowfish), GRND_NONBLOCK)) {
+    PERROR("%s", "Error initializing random iv");
+  }
+
   memset(dump, 'd', 512);
   dump[512] = 0;
   
