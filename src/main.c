@@ -1135,8 +1135,8 @@ void decryptFile() {
        number of CPUs is unknown, rather have too many threads than too few. */
     N_WRK_DEFAULT = 8,
   };
-  thread_t wrk_id[N_WRK_MAX];
-  struct worker_info wrk_info[N_WRK_MAX];
+  thread_t wrk_id[16];
+  struct worker_info wrk_info[16];
   int n_wrk = N_WRK_DEFAULT;
   int i;
 
