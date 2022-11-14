@@ -17,13 +17,13 @@ DVERSION = v1.3.0
 VERSION ?= $(shell git describe --tags --long --dirty 2>/dev/null || echo "$(DVERSION)")
 
 CFLAGS += -O3 -Wall -Wextra -g -pthread -DVERSION='"$(VERSION)"'
-LDFLAGS += -lmcrypt -lcurl
+LDFLAGS += -lcrypto -lcurl
 
 # large file support
 CFLAGS += $(shell getconf LFS_CFLAGS)
 LDFLAGS += $(shell getconf LFS_LDFLAGS)
 
-SRCS = src/md5.c src/main.c
+SRCS = src/main.c
 MAIN = otrtool
 
 OBJS = $(SRCS:.c=.o)
@@ -58,8 +58,3 @@ install: $(MAIN) $(MAIN).1.gz
 
 depend: $(SRCS)
 	makedepend -w70 -Y $^
-
-# DO NOT DELETE THIS LINE -- make depend needs it
-
-src/md5.o: src/md5.h
-src/main.o: src/md5.h
