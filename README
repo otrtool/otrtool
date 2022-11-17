@@ -4,7 +4,7 @@ servers while authenticating with user-supplied login credentials.
 
 == DEPENDENCIES ==
 
-* libmcrypt             for blowfish
+* libcrypto / openssl   for blowfish and md5
 * libcurl / curl        for the server request
 
 == BUILDING ==
@@ -19,7 +19,7 @@ servers while authenticating with user-supplied login credentials.
 * `make install` will install the binary and the manpage under /usr/local.
   Use `make install PREFIX=...` to install elsewhere.
 
-* If you didn't install libmcrypt and libcurl in the usual places,
+* If you didn't install libcrypto and libcurl in the usual places,
   specify where the headers and libraries are:
   `CFLAGS="-I/path/to/include" LDFLAGS="-L/path/to/lib" make`
 
