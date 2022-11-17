@@ -600,7 +600,7 @@ char * generateRequest(void *bigkey, char *date) {
   BF_KEY key;
   BF_set_key(&key, 28, bigkey);
   for (size_t i=0; i < 512; i+=8) {
-    // home-made cypher block chaining
+    // home-made cipher block chaining
     *((uint64_t*) &code[i]) ^= iv;
     BF_encrypt((uint32_t*) &code[i], &key);
     iv = *((uint64_t*) &code[i]);
@@ -702,7 +702,7 @@ char * decryptResponse(char *response, int length, void *bigkey) {
   BF_set_key(&key, 28, bigkey);
   uint64_t iv = *(uint64_t*) response;
   for (size_t i=0; i < (size_t) length - 8; i+=8) {
-    // home-made cypher block chaining
+    // home-made cipher block chaining
     BF_decrypt((uint32_t*) &result[i], &key);
     *((uint64_t*) &result[i]) ^= iv;
     iv = *((uint64_t*) &response[i+8]);
