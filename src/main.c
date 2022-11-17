@@ -25,6 +25,7 @@
 #include <curl/curl.h>
 #include <openssl/blowfish.h>
 #include <openssl/md5.h>
+#include <openssl/rand.h>
 
 #define ERROR(...) \
   ({fprintf(stderr, "\n"); \
@@ -566,7 +567,10 @@ void * generateBigkey(char *date) {
 char * generateRequest(void *bigkey, char *date) {
   char *headerFN = queryGetParam(header, "FN");
   char *thatohthing = queryGetParam(header, "OH");
-  uint64_t iv = 0x4242424242424242;
+  uint64_t iv;
+  if (RAND_bytes((uint8_t*) &iv, sizeof(iv)) != 1) {
+    ERROR("Error initializing random IV.");
+  }
   char *code = malloc(513);
   char *dump = malloc(513);
   char *result = malloc(1024); // base64-encoded code is 680 bytes
