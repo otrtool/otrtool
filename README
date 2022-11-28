@@ -45,8 +45,8 @@ E-Mail:                 eshrdlu/AT/yandex/DOT/com (de, en)
 
 == REPORTING BUGS ==
 
-For bug reports please run otrtool with the "-v"-option. Note that the output
-contains personal data like your email/password, and/or hashes of them.
+For bug reports please do NOT run otrtool with the "-v"-option because it
+outputs personal data like your email/password, and/or hashes of them.
 
 == VERSION NUMBERS ==
 
