@@ -1,3 +1,5 @@
 src/*.o
+src/blowfish_const.h
+src/blowfish_gen
 otrtool
 otrtool.1.gz

@@ -23,7 +23,7 @@
 #endif
 
 #include <curl/curl.h>
-#include <mcrypt.h>
+#include "blowfish.h"
 #include "md5.h"
 
 #define ERROR(...) \
@@ -493,17 +493,14 @@ char * getHeader() {
     PERROR("Error reading file");
   if (feof(file))
     ERROR("Error: unexpected end of file");
-  MCRYPT blowfish;
-  blowfish = mcrypt_module_open("blowfish-compat", NULL, "ecb", NULL);
   unsigned char hardKey[] = {
       0xEF, 0x3A, 0xB2, 0x9C, 0xD1, 0x9F, 0x0C, 0xAC,
       0x57, 0x59, 0xC7, 0xAB, 0xD1, 0x2C, 0xC9, 0x2B,
       0xA3, 0xFE, 0x0A, 0xFE, 0xBF, 0x96, 0x0D, 0x63,
       0xFE, 0xBD, 0x0F, 0x45};
-  mcrypt_generic_init(blowfish, hardKey, 28, NULL);
-  mdecrypt_generic(blowfish, header, 512);
-  mcrypt_generic_deinit(blowfish);
-  mcrypt_module_close(blowfish);
+  bf_state_t blowfish;
+  bf_init(&blowfish, hardKey, 28);
+  bf_ecb_decrypt(&blowfish, header, 512);
   header[512] = 0;
   
   char *padding = strstr((char*)header, "&PD=");
@@ -567,13 +564,12 @@ void * generateBigkey(char *date) {
 char * generateRequest(void *bigkey, char *date) {
   char *headerFN = queryGetParam(header, "FN");
   char *thatohthing = queryGetParam(header, "OH");
-  MCRYPT blowfish = mcrypt_module_open("blowfish-compat", NULL, "cbc", NULL);
-  char *iv = malloc(mcrypt_enc_get_iv_size(blowfish));
+  char *iv = malloc(BF_IV_LEN);
   char *code = malloc(513);
   char *dump = malloc(513);
   char *result = malloc(1024); // base64-encoded code is 680 bytes
   
-  memset(iv, 0x42, mcrypt_enc_get_iv_size(blowfish));
+  memset(iv, 0x42, BF_IV_LEN);
   memset(dump, 'd', 512);
   dump[512] = 0;
   
@@ -596,10 +592,9 @@ char * generateRequest(void *bigkey, char *date) {
     fputs("\n", stderr);
   }
   
-  mcrypt_generic_init(blowfish, bigkey, 28, iv);
-  mcrypt_generic(blowfish, code, 512);
-  mcrypt_generic_deinit(blowfish);
-  mcrypt_module_close(blowfish);
+  bf_state_t blowfish;
+  bf_init(&blowfish, bigkey, 28);
+  bf_cbc_encrypt(&blowfish, code, 512, iv);
   
   if (opts.verbosity >= VERB_DEBUG) {
     fputs("\nEncrypted request-'code':\n", stderr);
@@ -687,19 +682,17 @@ struct MemoryStruct * contactServer(char *request) {
 }
 
 char * decryptResponse(char *response, int length, void *bigkey) {
-  MCRYPT blowfish = mcrypt_module_open("blowfish-compat", NULL, "cbc", NULL);
+  bf_state_t blowfish;
   
-  if (length < mcrypt_enc_get_iv_size(blowfish) || length < 8)
+  if (length < BF_IV_LEN)
     return NULL;
-  length -= 8;
+  length -= BF_IV_LEN;
   
   char *result = malloc(length);
-  memcpy(result, response+8, length);
+  memcpy(result, response+BF_IV_LEN, length);
   
-  mcrypt_generic_init(blowfish, bigkey, 28, response);
-  mdecrypt_generic(blowfish, result, length);
-  mcrypt_generic_deinit(blowfish);
-  mcrypt_module_close(blowfish);
+  bf_init(&blowfish, bigkey, 28);
+  bf_cbc_decrypt(&blowfish, result, length, response);
   
   char *padding = strstr(result, "&D=");
   if (padding == NULL)
@@ -1015,11 +1008,11 @@ void verifyOnly() {
 struct worker_info {
   struct worker_info *next;
   semaphore_t read_sema, ivfy_sema, ovfy_sema, write_sema;
-  void *key;
   unsigned long long length;
   unsigned long long *pposition;
   FILE *file, *destfile;
   vfy_t *vfy_inp, *vfy_outp;
+  const bf_state_t *blowfishp;
 };
 
 void *decryptFileWorker(void *w_) {
@@ -1028,10 +1021,6 @@ void *decryptFileWorker(void *w_) {
   unsigned long long length = w->length;
   unsigned long long position;
   size_t readsize, writesize;
-  MCRYPT blowfish;
-
-  blowfish = mcrypt_module_open("blowfish-compat", NULL, "ecb", NULL);
-  mcrypt_generic_init(blowfish, w->key, 28, NULL);
 
   waitSemaphore(&w->read_sema);
   while ((position = *w->pposition) < length) {
@@ -1051,7 +1040,7 @@ void *decryptFileWorker(void *w_) {
 
     /* If the payload length is not a multiple of eight,
      * the last few bytes are stored unencrypted */
-    mdecrypt_generic(blowfish, buffer, readsize - readsize % 8);
+    bf_ecb_decrypt(w->blowfishp, buffer, readsize - readsize % 8);
 
     waitSemaphore(&w->ovfy_sema);
     verifyFile_data(w->vfy_outp, buffer, readsize);
@@ -1066,9 +1055,6 @@ void *decryptFileWorker(void *w_) {
     waitSemaphore(&w->read_sema);
   }
   postSemaphore(&w->next->read_sema);
-
-  mcrypt_generic_deinit(blowfish);
-  mcrypt_module_close(blowfish);
 
   return NULL;
 }
@@ -1125,9 +1111,11 @@ void decryptFile() {
   unsigned long long length = atoll(queryGetParam(header, "SZ")) - 522;
   unsigned long long position = 0;
   vfy_t vfy_in, vfy_out;
+  bf_state_t blowfish;
   
   verifyFile_init(&vfy_in, 1);
   verifyFile_init(&vfy_out, 0);
+  bf_init(&blowfish, key, 28);
 
   enum {
     N_WRK_MAX = MT ? 16 : 1,
@@ -1163,13 +1151,13 @@ void decryptFile() {
     initSemaphore(&wrk_info[i].ivfy_sema, 0);
     initSemaphore(&wrk_info[i].ovfy_sema, 0);
     initSemaphore(&wrk_info[i].write_sema, 0);
-    wrk_info[i].key = key;
     wrk_info[i].length = length;
     wrk_info[i].pposition = &position;
     wrk_info[i].file = file;
     wrk_info[i].destfile = destfile;
     wrk_info[i].vfy_inp = &vfy_in;
     wrk_info[i].vfy_outp = &vfy_out;
+    wrk_info[i].blowfishp = &blowfish;
   }
   for (i=0; i < n_wrk; i++)
     wrk_id[i] = createThread(decryptFileWorker, &wrk_info[i]);

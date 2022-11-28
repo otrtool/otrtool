@@ -17,13 +17,13 @@ DVERSION = v1.3.0
 VERSION ?= $(shell git describe --tags --long --dirty 2>/dev/null || echo "$(DVERSION)")
 
 CFLAGS += -O3 -Wall -Wextra -g -pthread -DVERSION='"$(VERSION)"'
-LDFLAGS += -lmcrypt -lcurl
+LDFLAGS += -lcurl
 
 # large file support
 CFLAGS += $(shell getconf LFS_CFLAGS)
 LDFLAGS += $(shell getconf LFS_LDFLAGS)
 
-SRCS = src/md5.c src/main.c
+SRCS = src/md5.c src/blowfish.c src/main.c
 MAIN = otrtool
 
 OBJS = $(SRCS:.c=.o)
@@ -40,6 +40,13 @@ $(MAIN): $(OBJS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o $(MAIN) $(OBJS) $(LDFLAGS)
 	@echo Build successful
 
+# blowfish_const.h is neither rebuilt nor cleaned automatically
+# because it is slow to rebuild and shouldn't really change.
+src/blowfish_const.h: | src/blowfish_gen
+	src/blowfish_gen > src/blowfish_const.h
+src/blowfish_gen: src/blowfish_gen.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ $<
+
 # this is a suffix replacement rule for building .o's from .c's
 # it uses automatic variables $<: the name of the prerequisite of
 # the rule(a .c file) and $@: the name of the target of the rule (a .o file) 
@@ -48,7 +55,7 @@ $(MAIN): $(OBJS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 clean:
-	$(RM) $(OBJS) $(MAIN) $(MAIN).1.gz
+	$(RM) $(OBJS) $(MAIN) $(MAIN).1.gz src/blowfish_gen
 
 install: $(MAIN) $(MAIN).1.gz
 	install -m 0755 -d $(DESTDIR)$(PREFIX)/bin
@@ -62,4 +69,5 @@ depend: $(SRCS)
 # DO NOT DELETE THIS LINE -- make depend needs it
 
 src/md5.o: src/md5.h
-src/main.o: src/md5.h
+src/blowfish.o: src/blowfish.h src/blowfish_const.h
+src/main.o: src/blowfish.h src/md5.h
