@@ -1133,7 +1133,7 @@ void decryptFile() {
     N_WRK_MAX = MT ? 16 : 1,
     /* Maximum multithreading speedup should be around 6 to 7. In case the
        number of CPUs is unknown, rather have too many threads than too few. */
-    N_WRK_DEFAULT = 8,
+    N_WRK_DEFAULT = MT ? 8 : 1,
   };
   thread_t wrk_id[N_WRK_MAX];
   struct worker_info wrk_info[N_WRK_MAX];
