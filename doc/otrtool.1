@@ -1,4 +1,4 @@
-.TH OTRTOOL 1 2015-10-17 ZOMG "otrtool Manual"
+.TH OTRTOOL 1 2021-01-26 ZOMG "otrtool Manual"
 
 .\" ********************************************************************
 .\" ********************************************************************
@@ -53,9 +53,11 @@ otrtool \- decrypts otrkeys from onlinetvrecorder.com
 .\" ********************************************************************
 .SH DESCRIPTION
 .B otrtool
-aims to provide an open source tool to deal with otrkey\-files from onlinetvrecoder.com.
-.\"At the moment it is able to decrypt them, in the future a download manager and/or EPG could be added.
-
+aims to provide an open source tool to deal with otrkey\-files from
+onlinetvrecorder.com.
+It is able to decrypt them using keys it fetches from OTR's
+servers while authenticating with user-supplied login credentials.
+For basic usage, see \fBEXAMPLES\fR below.
 
 .\" ********************************************************************
 .\" ********************************************************************
@@ -145,12 +147,36 @@ as password
 
 
 .\" ********************************************************************
+.SS "Miscellaneous options"
+
+.TP
+.B \-g
+Output machine-readable progress information on stdout
+.br
+(for use by GUIs)
+
+
+.\" ********************************************************************
+.SS "Testing, debugging and benchmarking"
+
+These options might change their behaviour in the future.
+
+.TP
+.BI \-T \ n
+In decrypt mode, if multithreading is available and \fIn\fR is greater
+than zero, use \fIn\fR worker threads, within limits.
+Setting this option to an integer other than zero also prevents
+\fBotrtool\fR from touching its \fBnice\fR(1) and \fBionice\fR(1)
+[Linux] values.
+
+
+.\" ********************************************************************
 .\" ********************************************************************
 .SH "EXAMPLES"
 
 Decrypt a single otrkey file.
 If you have not decrypted that file before, you will be asked for your
-username and password:
+e-mail address and password:
 .PP
 .nf
 .RS
@@ -171,6 +197,17 @@ them afterwards. Output files will be stored in your "Movies" directory:
 
 .\" ********************************************************************
 .\" ********************************************************************
+.SH "FILES"
+
+.TP
+.I ~/.otrkey_cache
+Key cache. Currently, the only way to disable this feature is to disallow
+\fBotrtool\fR to read and/or write this file by using \fBchmod\fR(1)
+or similar means.
+
+
+.\" ********************************************************************
+.\" ********************************************************************
 .SH "CONTACT"
 
 .TP
@@ -187,7 +224,11 @@ http://github.com/otrtool/otrtool/issues
 
 .TP
 .B E-mail:
-eshrdlu AT yandex DOT com (de, en)
+eshrdlu
+.R AT
+yandex
+.R DOT
+com (de, en)
 
 .RE
 

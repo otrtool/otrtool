@@ -5,7 +5,6 @@
   packages could then just link /bin/otrdecoder -> /bin/otrtool
   * Would this be option-compatible to the proprietary otrdecoder?
 * config in ~
-* twittelevision
 * pretty formatting for -i
 * Valgrind-cleanliness
 * store header information in a struct rather than calling

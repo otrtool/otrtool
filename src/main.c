@@ -1,15 +1,24 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <strings.h>
+#include <stdint.h>
 #include <unistd.h>
 #include <termios.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <sys/syscall.h>
-
+#ifdef __linux__
+  #include <sys/syscall.h> /* ioprio_set */
+#endif
 #include <time.h>
+
+#if _POSIX_THREADS > 0 && _POSIX_SEMAPHORES > 0
+  #include <pthread.h>
+  #include <semaphore.h>
+  #define MT 1
+#else
+  #define MT 0
+#endif
 
 #include <mcrypt.h>
 #include "md5.h"
@@ -59,6 +68,7 @@ struct otrtool_options {
   char *keyphrase;
   char *destdir;
   char *destfile;
+  int n_threads;
 };
 static struct otrtool_options opts = {
   .action = ACTION_INFO,
@@ -70,6 +80,7 @@ static struct otrtool_options opts = {
   .keyphrase = NULL,
   .destdir = NULL,
   .destfile = NULL,
+  .n_threads = 0,
 };
 
 static int interactive = 1; // ask questions instead of exiting
@@ -246,7 +257,7 @@ void * base64Decode(char *text, int *outlen) {
       ? 2 : (text[inlen-1] == '=' ? 1 : 0));
   char *result = malloc(blocks * 3);
   char *resptr = result;
-  u_int8_t *text_ = (u_int8_t*)text;
+  uint8_t *text_ = (uint8_t*)text;
   int i;
   
   for (i = 0 ; i < blocks ; i++) {
@@ -270,7 +281,7 @@ abcdefghijklmnopqrstuvwxyz\
 }
 
 char * queryGetParam(char *query, char *name) {
-  char *begin = index(query, '&');
+  char *begin = strchr(query, '&');
   char *end;
   int nameLen = strlen(name);
   
@@ -278,7 +289,7 @@ char * queryGetParam(char *query, char *name) {
     begin++;
     if (strncmp(begin, name, nameLen) == 0 && begin[nameLen] == '=') {
       begin += nameLen + 1;
-      end = index(begin, '&');
+      end = strchr(begin, '&');
       if (end == NULL)
         end = begin + strlen(begin);
       char *result = malloc(end - begin + 1);
@@ -286,7 +297,7 @@ char * queryGetParam(char *query, char *name) {
       result[end - begin] = 0;
       return result;
     }
-    begin = index(begin, '&');
+    begin = strchr(begin, '&');
   }
   return NULL;
 }
@@ -317,24 +328,23 @@ void quote(char *message) {
 }
 
 void dumpQuerystring(char *query) {
-  int length = strlen(query);
   char line[LINE_LENGTH + 1];
   int index = 0;
-  
+
   if (*query == '&') {
     line[0] = '&';
     index++;
     query++;
   }
-  
-  for (; length > 0 ; length --) {
+
+  for (; *query; query++) {
     if (*query == '&') {
       line[index] = '\n';
       fwrite(line, index + 1, 1, stderr);
       index = 0;
     }
     line[index] = *query;
-    
+
     index++;
     if (index == LINE_LENGTH) {
       line[index] = '\n';
@@ -342,7 +352,6 @@ void dumpQuerystring(char *query) {
       line[0] = ' ';
       index = 1;
     }
-    query++;
   }
   line[index] = '\n';
   if (index != LINE_LENGTH) fwrite(line, index + 1, 1, stderr);
@@ -407,7 +416,8 @@ void showProgress(long long position, long long length) {
             progressbar, (int)(position*100/length),
             rotatingFoo[blocknum++ % 4]);
       } else {
-        fprintf(stderr, "gui> %3i\n", (int)(position*100/length));
+        fprintf(stdout, "gui> %7.3f\n", position*100.0/length);
+        fflush(stdout);
       }
       fflush(stderr);
       oldpos = position;
@@ -416,12 +426,60 @@ void showProgress(long long position, long long length) {
     if (opts.guimode == 0) {
       fputs("[========================================] 100%    \n", stderr);
     } else {
-      fputs("gui> Finished\n", stderr);
+      fputs("gui> Finished\n", stdout);
+      fflush(stdout);
     }
     oldpos = 0;
     blocknum = 0;
   }
 }
+
+// ################# multi-threading functions #################
+/* Just some wrapper functions that handle errors
+   and allow to fall back to single-threading easily */
+
+#if MT == 0 /* no multi-threading */
+typedef void *thread_t;
+typedef int semaphore_t;
+
+thread_t createThread(void *(*s)(void *), void *a) { return s(a); }
+void *joinThread(thread_t t) { return t; }
+#define initSemaphore(x,y)
+#define destroySemaphore(x)
+#define waitSemaphore(x)
+#define postSemaphore(x)
+
+#elif MT == 1 /* POSIX threads and semaphores */
+typedef pthread_t thread_t;
+typedef sem_t semaphore_t;
+
+thread_t createThread(void *(*start_routine)(void *), void *arg) {
+  pthread_t tid;
+  errno = pthread_create(&tid, NULL, start_routine, arg);
+  if (errno != 0) PERROR("pthread_create");
+  return tid;
+}
+void *joinThread(thread_t tid) {
+  void *res;
+  errno = pthread_join(tid, &res);
+  if (errno != 0) PERROR("pthread_join");
+  return res;
+}
+void initSemaphore(semaphore_t *psem, unsigned int value) {
+  if (sem_init(psem, 0, value) < 0) PERROR("sem_init");
+}
+void destroySemaphore(semaphore_t *psem) {
+  if (sem_destroy(psem) < 0) PERROR("sem_destroy");
+}
+void waitSemaphore(semaphore_t *psem) {
+  int i;
+  while ((i = sem_wait(psem)) == -1 && errno == EINTR);
+  if (i < 0) PERROR("sem_wait");
+}
+void postSemaphore(semaphore_t *psem) {
+  if (sem_post(psem) < 0) PERROR("sem_post");
+}
+#endif /* MT */
 
 // ###################### special functions ####################
 
@@ -565,7 +623,8 @@ char * generateRequest(void *bigkey, char *date) {
 struct MemoryStruct * contactServer(char *request) {
   // http://curl.haxx.se/libcurl/c/getinmemory.html
   CURL *curl_handle;
-  char errorstr[CURL_ERROR_SIZE];
+  CURLcode res;
+  char errbuf[CURL_ERROR_SIZE];
   
   struct MemoryStruct *chunk = malloc(sizeof(struct MemoryStruct));
   chunk->memory=NULL; /* we expect realloc(NULL, size) to work */ 
@@ -592,11 +651,12 @@ struct MemoryStruct * contactServer(char *request) {
   /* set verbosity and error message buffer */
   if (opts.verbosity >= VERB_DEBUG)
     curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, 1);
-  curl_easy_setopt(curl_handle, CURLOPT_ERRORBUFFER, errorstr);
+  curl_easy_setopt(curl_handle, CURLOPT_ERRORBUFFER, errbuf);
   
   /* get it! */ 
-  if (curl_easy_perform(curl_handle) != 0)
-    ERROR("cURL error: %s", errorstr);
+  *errbuf = 0;
+  if ((res = curl_easy_perform(curl_handle)) != CURLE_OK)
+    ERROR("cURL error %d: %s", res, *errbuf ? errbuf : curl_easy_strerror(res));
   
   /* cleanup curl stuff */ 
   curl_easy_cleanup(curl_handle);
@@ -876,8 +936,8 @@ void verifyOnly() {
   verifyFile_init(&vfy, 1);
   for (position = 0; position < length; position += n) {
     showProgress(position, length);
-    n = fread(buffer, 1, MIN(length - position, sizeof(buffer)), file);
-    if (n == 0 || ferror(file)) break;
+    n = MIN(length - position, sizeof(buffer));
+    if (fread(buffer, 1, n, file) < n) break;
     verifyFile_data(&vfy, buffer, n);
   }
   if (position < length) {
@@ -894,6 +954,67 @@ void verifyOnly() {
     PERROR("fread");
   verifyFile_final(&vfy);
   fputs("file is OK\n", stderr);
+}
+
+struct worker_info {
+  struct worker_info *next;
+  semaphore_t read_sema, ivfy_sema, ovfy_sema, write_sema;
+  void *key;
+  unsigned long long length;
+  unsigned long long *pposition;
+  FILE *file, *destfile;
+  vfy_t *vfy_inp, *vfy_outp;
+};
+
+void *decryptFileWorker(void *w_) {
+  struct worker_info *w = w_;
+  char buffer[65536];
+  unsigned long long length = w->length;
+  unsigned long long position;
+  size_t readsize, writesize;
+  MCRYPT blowfish;
+
+  blowfish = mcrypt_module_open("blowfish-compat", NULL, "ecb", NULL);
+  mcrypt_generic_init(blowfish, w->key, 28, NULL);
+
+  waitSemaphore(&w->read_sema);
+  while ((position = *w->pposition) < length) {
+    showProgress(position, length);
+    readsize = MIN(length - position, sizeof(buffer));
+    if (fread(buffer, 1, readsize, w->file) < readsize) {
+      if (feof(w->file))
+        ERROR("Input file is too short");
+      PERROR("Error reading input file");
+    }
+    *w->pposition = position + readsize;
+    postSemaphore(&w->next->read_sema);
+
+    waitSemaphore(&w->ivfy_sema);
+    verifyFile_data(w->vfy_inp, buffer, readsize);
+    postSemaphore(&w->next->ivfy_sema);
+
+    /* If the payload length is not a multiple of eight,
+     * the last few bytes are stored unencrypted */
+    mdecrypt_generic(blowfish, buffer, readsize - readsize % 8);
+
+    waitSemaphore(&w->ovfy_sema);
+    verifyFile_data(w->vfy_outp, buffer, readsize);
+    postSemaphore(&w->next->ovfy_sema);
+
+    waitSemaphore(&w->write_sema);
+    writesize = fwrite(buffer, 1, readsize, w->destfile);
+    if (writesize != readsize)
+      PERROR("Error writing to destination file");
+    postSemaphore(&w->next->write_sema);
+
+    waitSemaphore(&w->read_sema);
+  }
+  postSemaphore(&w->next->read_sema);
+
+  mcrypt_generic_deinit(blowfish);
+  mcrypt_module_close(blowfish);
+
+  return NULL;
 }
 
 void decryptFile() {
@@ -945,53 +1066,79 @@ void decryptFile() {
   fputs("Decrypting and verifying...\n", stderr); // -----------------------
   
   void *key = hex2bin(keyphrase);
-  MCRYPT blowfish = mcrypt_module_open("blowfish-compat", NULL, "ecb", NULL);
-  mcrypt_generic_init(blowfish, key, 28, NULL);
-  
   unsigned long long length = atoll(queryGetParam(header, "SZ")) - 522;
   unsigned long long position = 0;
-  size_t readsize;
-  size_t writesize;
-  static char buffer[65536];
   vfy_t vfy_in, vfy_out;
   
   verifyFile_init(&vfy_in, 1);
   verifyFile_init(&vfy_out, 0);
-  
-  while (position < length) {
-    showProgress(position, length);
 
-    if (length - position >= sizeof(buffer)) {
-      readsize = fread(buffer, 1, sizeof(buffer), file);
-    } else {
-      readsize = fread(buffer, 1, length - position, file);
-    }
-    if (readsize <= 0) {
-      if (feof(file))
-        ERROR("Input file is too short");
-      PERROR("Error reading input file");
-    }
-    
-    verifyFile_data(&vfy_in, buffer, readsize);
-    /* If the payload length is not a multiple of eight,
-     * the last few bytes are stored unencrypted */
-    mdecrypt_generic(blowfish, buffer, readsize - readsize % 8);
-    verifyFile_data(&vfy_out, buffer, readsize);
-    
-    writesize = fwrite(buffer, 1, readsize, destfile);
-    if (writesize != readsize)
-      PERROR("Error writing to destination file");
-    
-    position += writesize;
+  enum {
+    N_WRK_MAX = MT ? 16 : 1,
+    /* Maximum multithreading speedup should be around 6 to 7. In case the
+       number of CPUs is unknown, rather have too many threads than too few. */
+    N_WRK_DEFAULT = 8,
+  };
+  thread_t wrk_id[N_WRK_MAX];
+  struct worker_info wrk_info[N_WRK_MAX];
+  int n_wrk = N_WRK_DEFAULT;
+  int i;
+
+#ifdef _SC_NPROCESSORS_ONLN
+  i = sysconf(_SC_NPROCESSORS_ONLN);
+  if (opts.verbosity >= VERB_DEBUG)
+    fprintf(stderr, "number of CPUs: %d\n", i);
+  if (i > 0) n_wrk = MIN(i, N_WRK_DEFAULT);
+#endif
+  if (opts.n_threads > 0)
+    n_wrk = MIN(opts.n_threads, N_WRK_MAX);
+  if (opts.verbosity >= VERB_DEBUG) {
+  #if MT
+    fprintf(stderr, "number of worker threads: %d\n", n_wrk);
+  #else
+    fputs("multi-threading disabled at compile-time\n", stderr);
+  #endif
+  }
+
+  /* Create worker threads */
+  for (i=0; i < n_wrk; i++) {
+    wrk_info[i].next = (i < n_wrk - 1) ? wrk_info + i + 1 : wrk_info;
+    initSemaphore(&wrk_info[i].read_sema, 0);
+    initSemaphore(&wrk_info[i].ivfy_sema, 0);
+    initSemaphore(&wrk_info[i].ovfy_sema, 0);
+    initSemaphore(&wrk_info[i].write_sema, 0);
+    wrk_info[i].key = key;
+    wrk_info[i].length = length;
+    wrk_info[i].pposition = &position;
+    wrk_info[i].file = file;
+    wrk_info[i].destfile = destfile;
+    wrk_info[i].vfy_inp = &vfy_in;
+    wrk_info[i].vfy_outp = &vfy_out;
+  }
+  for (i=0; i < n_wrk; i++)
+    wrk_id[i] = createThread(decryptFileWorker, &wrk_info[i]);
+
+  /* Go! */
+  postSemaphore(&wrk_info[0].read_sema);
+  postSemaphore(&wrk_info[0].ivfy_sema);
+  postSemaphore(&wrk_info[0].ovfy_sema);
+  postSemaphore(&wrk_info[0].write_sema);
+
+  /* Wait... */
+  for (i=0; i < n_wrk; i++)
+    joinThread(wrk_id[i]);
+
+  for (i=0; i < n_wrk; i++) {
+    destroySemaphore(&wrk_info[i].read_sema);
+    destroySemaphore(&wrk_info[i].ivfy_sema);
+    destroySemaphore(&wrk_info[i].ovfy_sema);
+    destroySemaphore(&wrk_info[i].write_sema);
   }
   showProgress(1, 0);
 
   verifyFile_final(&vfy_in);
   verifyFile_final(&vfy_out);
   fputs("OK checksums from header match\n", stderr);
-  
-  mcrypt_generic_deinit(blowfish);
-  mcrypt_module_close(blowfish);
   
   if (fclose(destfile) != 0)
     PERROR("Error closing destination file.");
@@ -1076,7 +1223,7 @@ int main(int argc, char *argv[]) {
 
   int i;
   int opt;
-  while ( (opt = getopt(argc, argv, "hvgifxyk:e:p:D:O:u")) != -1) {
+  while ( (opt = getopt(argc, argv, "hvgifxyk:e:p:D:O:uT:")) != -1) {
     switch (opt) {
       case 'h':
         usageError();
@@ -1121,6 +1268,9 @@ int main(int argc, char *argv[]) {
       case 'u':
         opts.unlinkmode = 1;
         break;
+      case 'T':
+        opts.n_threads = atoi(optarg);
+        break;
       default:
         usageError();
         exit(EXIT_FAILURE);
@@ -1150,6 +1300,8 @@ int main(int argc, char *argv[]) {
     if (i < argc)
       ERROR("Usage error: piping is not possible with multiple input files");
   }
+  if (opts.guimode && opts.destfile != NULL && strcmp(opts.destfile, "-") == 0)
+    ERROR("Usage error: options -g and -O - are incompatible");
 
   if (!isatty(2) && opts.guimode == 0) {
     logfilemode = 1;
@@ -1166,15 +1318,16 @@ int main(int argc, char *argv[]) {
     else ttyfile = stdin;
   }
 
-  if (opts.action == ACTION_DECRYPT || opts.action == ACTION_VERIFY) {
+  if ((opts.action == ACTION_DECRYPT || opts.action == ACTION_VERIFY)
+      && opts.n_threads == 0) {
     errno = 0;
     nice(10);
     if (errno == 0 && opts.verbosity >= VERB_DEBUG)
       fputs("NICE was set to 10\n", stderr);
 
-    // I am not sure if this really catches all errors
+    // Set I/O scheduling class using the Linux-specific ioprio_set syscall
     // If this causes problems, just delete the ionice-stuff
-    #ifdef __NR_ioprio_set
+    #if defined(__linux__) && defined(__NR_ioprio_set)
       if (syscall(__NR_ioprio_set, 1, getpid(), 7 | 3 << 13) == 0
            && opts.verbosity >= VERB_DEBUG)
         fputs("IONICE class was set to Idle\n", stderr);
