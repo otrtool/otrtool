@@ -1,5 +1,8 @@
 For detailed information, see the Git log.
 
+1.3.1 [2022-12-24] (only in stable branch)
+* cherry-picked multi-threading bug fix
+
 1.3.0 [2021-01-30]
 * multi-threaded decryption
 
