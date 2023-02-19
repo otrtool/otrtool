@@ -26,18 +26,20 @@
 #include "blowfish.h"
 #include "md5.h"
 
-#define ERROR(...) \
-  ({fprintf(stderr, "\n"); \
+#define ERROR(...) do { \
+    fprintf(stderr, "\n"); \
     fprintf(stderr, __VA_ARGS__); \
     fprintf(stderr, "\n"); \
-    exit(EXIT_FAILURE); })
+    exit(EXIT_FAILURE); \
+  } while (0)
 
-#define PERROR(...) \
-  ({fprintf(stderr, "\n"); \
+#define PERROR(...) do { \
+    fprintf(stderr, "\n"); \
     fprintf(stderr, __VA_ARGS__); \
     fprintf(stderr, ": "); \
     perror(NULL); \
-    exit(EXIT_FAILURE); })
+    exit(EXIT_FAILURE); \
+  } while (0)
 
 #define MIN(a,b) ((a)<(b)?(a):(b))
 
