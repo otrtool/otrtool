@@ -10,9 +10,13 @@
 #include <termios.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#if _POSIX_THREADS > 0 && _POSIX_SEMAPHORES > 0
+#if _POSIX_THREADS > 0
   #include <pthread.h>
-  #include <semaphore.h>
+  #if _POSIX_SEMAPHORES > 0
+    #include <semaphore.h>
+  #else
+    #include "sem.h"
+  #endif
   #define MT 1
 #else
   #define MT 0

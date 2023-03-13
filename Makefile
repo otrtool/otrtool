@@ -23,7 +23,7 @@ LDFLAGS += -lcurl
 CFLAGS += $(shell getconf LFS_CFLAGS)
 LDFLAGS += $(shell getconf LFS_LDFLAGS)
 
-SRCS = src/md5.c src/blowfish.c src/main.c
+SRCS = src/md5.c src/blowfish.c src/sem.c src/main.c
 MAIN = otrtool
 
 OBJS = $(SRCS:.c=.o)
