@@ -70,4 +70,5 @@ depend: $(SRCS)
 
 src/md5.o: src/md5.h
 src/blowfish.o: src/blowfish.h src/blowfish_const.h
+src/sem.o: src/sem.h
 src/main.o: src/blowfish.h src/md5.h

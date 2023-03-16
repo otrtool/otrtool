@@ -1,5 +1,7 @@
 #include <unistd.h>
 #if _POSIX_SEMAPHORES <= 0
+#include <pthread.h>
+#include <errno.h>
 #include "sem.h"
 
 int sem_init(sem_t *sem, int pshared, unsigned value) {
