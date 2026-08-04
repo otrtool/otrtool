@@ -57,6 +57,9 @@ BlueC0re
 Dominik Muth
 gcurse
 Ramin Yaghoubzadeh
+Keno Hassler
+  * eigene Semaphor-Implementierung für den Fall, dass POSIX-Semaphore
+    nicht verfügbar sind (MacOS)
 TheNeoBurn
 
 Aktuelle und nähere Informationen finden sich im Git-Log.
