@@ -32,15 +32,15 @@ servers while authenticating with user-supplied login credentials.
 
 == LINKS ==
 
-project homepage:       http://otrtool.github.io/otrtool/
-github repository:      http://github.com/otrtool/otrtool
-bug tracker:            http://github.com/otrtool/otrtool/issues
+project homepage:       https://otrtool.github.io/otrtool/
+github repository:      https://github.com/otrtool/otrtool
+bug tracker:            https://github.com/otrtool/otrtool/issues
 
-lem's tk/perl GUI:      http://github.com/Lem/otrtool-gui
+lem's tk/perl GUI:      https://github.com/Lem/otrtool-gui
 
 == CONTACT ==
 
-E-Mail:                 eshrdlu/AT/yandex/DOT/com (de, en)
+E-Mail:                 eshrdlu/AT/protonmail/DOT/com (de, en)
 
 == REPORTING BUGS ==
 
@@ -60,7 +60,7 @@ Client-Server-protocol. The blog post describing his work (German):
 original URL (dead link):
     http://41yd.de/blog/2010/04/18/otrkey-breaker/
 mirror:
-    http://pyropeter.eu/41yd.de/blog/2010/04/18/otrkey-breaker/
+    https://pyropeter.eu/41yd.de/blog/2010/04/18/otrkey-breaker/
 He also wrote a proof-of-concept tool to decrypt OTRKEYs. PyroPeter rewrote
 it in C and without licensing issues.
 
@@ -69,4 +69,4 @@ it in C and without licensing issues.
 otrtool uses the CC0 license.
 
 For the license text see the LICENSE file or
-http://creativecommons.org/publicdomain/zero/1.0/legalcode
+https://creativecommons.org/publicdomain/zero/1.0/legalcode
